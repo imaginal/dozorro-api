@@ -1,0 +1,6 @@
+pytz
+aiohttp
+aiodns
+cchardet
+ed25519
+python-rapidjson

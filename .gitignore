@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+etc/
+build/
+develop-eggs/
+dist/
+eggs/
+venv/
+lib/
+lib64/
+parts/
+sdist/
+private/
+*.egg-info/
+.installed.cfg
+*.egg
+*.deb
+
+# SublimeText files
+*.sublime-*

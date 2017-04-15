@@ -24,5 +24,5 @@ async def error_middleware(app, handler):
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:
             logger.exception('UnhandledException')
-            return json_error(500, 'Unhandled: {}'.format(e))
+            return json_error(500, 'Unhandled Error: {}'.format(e))
     return middleware_handler

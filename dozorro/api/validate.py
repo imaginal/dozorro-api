@@ -3,11 +3,12 @@ import pytz
 import hashlib
 import ed25519
 import iso8601
+import logging
 import jsonschema
 from rapidjson import dumps
 from datetime import datetime, timedelta
-from .backend import check_exists
 
+logger = logging.getLogger(__name__)
 
 TZ = pytz.timezone(os.environ.get('TZ', 'Europe/Kiev'))
 
@@ -18,7 +19,7 @@ def hash_id(bdata):
     return h2[:32]
 
 
-async def validate_sign(data, app):
+def validate_envelope(data, keyring):
     bdata = dumps(data['envelope'],
         skipkeys=False,
         ensure_ascii=False,
@@ -28,40 +29,41 @@ async def validate_sign(data, app):
     try:
         sign = data['sign']
         owner = data['envelope']['owner']
-        vkey_hex = app['keyring'][owner]
+        vkey_hex = keyring[owner]['publicKey']
         vk = ed25519.VerifyingKey(vkey_hex, encoding='hex')
         vk.verify(sign, bdata, encoding='base64')
     except Exception as e:
-        raise ValueError('sign error', e)
+        raise ValueError('sign not verified') from e
     try:
         date = iso8601.parse_date(data['envelope']['date'])
         today = TZ.localize(datetime.now())
         # assert date > today - timedelta(days=1), 'date is too soon'
         # assert date < today + timedelta(days=1), 'date is too late'
     except Exception as e:
-        raise ValueError('bad envelope date')
+        raise ValueError('bad envelope date') from e
     if len(data) > 3 or len(data['envelope']) > 5:
         raise ValueError('too many keys')
 
 
-async def check_reference(conn, refid, reference):
-    if reference == 'tender':
-        return  #  await check_exists(conn, refid, table='tender')
-    else:
-        await check_exists(conn, refid, model=reference)
+async def validate_references(payload, formschema, app):
+    for key, value in formschema['properties'].items():
+        if 'reference' in value and key in payload:
+            pass
 
 
-async def validate_form(envelope, app):
+async def validate_schema(envelope, app):
     try:
+        model = envelope['model']
         payload = envelope['payload']
         schema = envelope['schema']
     except Exception as e:
         raise ValueError('bad model', e)
+    if model == 'admin':
+        assert envelope['owner'] == 'root'
+        return
     formschema = app['schemas'][schema]
     jsonschema.validate(payload, formschema)
-    for key, value in formschema['properties'].items():
-        if 'reference' in value and key in payload:
-            await check_reference(app['db'], payload[key], value['reference'])
+    await validate_references(payload, formschema, app)
 
 
 async def validate_comment(envelope, app):

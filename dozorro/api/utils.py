@@ -13,7 +13,7 @@ def load_owners(app, path='private/keyring'):
         data = loads(open(fn, 'rb').read())
         payload = data['envelope']['payload']
         owner = payload['owner']
-        keyring[owner] = payload['publicKey']
+        keyring[owner] = payload
     app['keyring'] = keyring
     logging.info("Loaded {} keys".format(len(keyring)))
 

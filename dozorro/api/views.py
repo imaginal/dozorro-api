@@ -42,6 +42,10 @@ class ListView(View):
         else:
             raise ValueError('bad model name')
 
+        if self.request.GET.get('nosave', False):
+            resp = {'validated': 1, 'created': 0}
+            return json_response(resp, dumps=dumps)
+
         await app['db'].put_item(data)
         url = app.router['item_view'].url_for(item_id=data['id'])
         headers = [('Location', url.path)]

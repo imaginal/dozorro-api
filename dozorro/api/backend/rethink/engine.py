@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 class RethinkEngine(object):
     async def init_engine(self, app):
         r.set_loop_type('asyncio')
-        self.conn = await r.connect(db='sandbox')
+        options = app['config']['database']
+        db_name = options.pop('name')
+        self.conn = await r.connect(db=db_name, **options)
         self.task = app.loop.create_task(self.keep_alive(app))
         app['db'] = self
 

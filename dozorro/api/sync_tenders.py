@@ -1,25 +1,31 @@
 import sys
+import yaml
+import signal
 import logging
 import asyncio
 import aiohttp
 import rapidjson
-
-from .backend import init_engine
-
+import logging.config
+from functools import partial
+from . import backend, utils
 
 logger = logging.getLogger(__name__)
 
 
+class FakeApp(dict):
+    def __init__(self, loop):
+        self.loop = loop
+
 class Client(object):
-    def __init__(self, conf):
-        self.api_url = conf['url']
+    def __init__(self, config):
+        self.api_url = config['url']
         self.params = {
-            'feed': conf.get('feed', 'changes'),
-            'limit': conf.get('limit', '1000'),
-            'mode': conf.get('mode', '_all_'),
-            'descending': conf.get('descending', '1')
+            'feed': config.get('feed', 'changes'),
+            'limit': config.get('limit', '1000'),
+            'mode': config.get('mode', '_all_'),
+            'descending': config.get('descending', '1')
         }
-        self.timeout = int(conf.get('timeout', 30))
+        self.timeout = int(config.get('timeout', 30))
         self.session = None
 
     def __del__(self):
@@ -60,12 +66,12 @@ async def save_tender(db, tender):
         return 1
 
 
-async def run_once(conf, loop, query_limit=3000):
-    app = {}
-    db = await init_engine(app)
+async def run_once(app, loop, query_limit=3000):
+    db = await backend.init_engine(app)
+    config = app['config']['client']
 
-    fwd_client = await Client(conf).async_init(loop)
-    bwd_client = await Client(conf).async_init(loop)
+    fwd_client = await Client(config).async_init(loop)
+    bwd_client = await Client(config).async_init(loop)
 
     await fwd_client.get_tenders()
     fwd_client.params.pop('descending')
@@ -87,7 +93,7 @@ async def run_once(conf, loop, query_limit=3000):
         for tender in bwd_list:
             updated += await save_tender(db, tender)
 
-        logger.info("Backward client fetched %d updated %d last %s",
+        logger.info('Backward client fetched %d updated %d last %s',
             len(bwd_list), updated, tender.get('dateModified'))
 
         tender = {}
@@ -96,38 +102,43 @@ async def run_once(conf, loop, query_limit=3000):
         for tender in fwd_list:
             updated += await save_tender(db, tender)
 
-        logger.info("Forward client fetched %d updated %d last %s",
+        logger.info('Forward client fetched %d updated %d last %s',
             len(fwd_list), updated, tender.get('dateModified'))
 
         await asyncio.sleep(1)
 
 
-async def run_loop(loop):
-    conf = {
-        'url': 'https://public.api.openprocurement.org/api/2.3/tenders'
-    }
+async def run_loop(loop, config='config/api.yaml'):
+    if len(sys.argv) > 1:
+        config = sys.argv[1]
+
+    app = FakeApp(loop)
+    utils.load_config(app, config)
 
     while loop.is_running():
         try:
-            await run_once(conf, loop)
+            await run_once(app, loop)
+        except asyncio.CancelledError:
+            break
         except Exception as e:
-            logger.exception("run_once: %s", e)
-            await asyncio.sleep(50)
+            logger.exception('Unhandled Exception')
+            await asyncio.sleep(10)
 
-    logger.info("Loop closed.")
+    logger.info('Loop closed.')
+
+
+def shutdown(loop):
+    for task in asyncio.Task.all_tasks(loop):
+        task.cancel()
 
 
 def main():
-    log_format = "%(asctime)s %(levelname)s %(message)s"
-    logging.basicConfig(level=logging.DEBUG, format=log_format)
-
     loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(run_loop(loop))
-    except KeyboardInterrupt:
-        loop.stop()
-    finally:
-        loop.close()
+    shutdown_loop = partial(shutdown, loop)
+    loop.add_signal_handler(signal.SIGHUP, shutdown_loop)
+    loop.add_signal_handler(signal.SIGTERM, shutdown_loop)
+    loop.run_until_complete(run_loop(loop))
+    loop.close()
 
 if __name__ == '__main__':
     main()

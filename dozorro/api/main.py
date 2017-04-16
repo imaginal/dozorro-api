@@ -7,16 +7,15 @@ async def cleanup(app):
     await app['db'].close()
 
 
-async def init_app(loop):
-    import logging
-    logging.basicConfig(format=utils.LOG_FORMAT, level=logging.INFO)
+async def init_app(loop, config='config/api.yaml'):
     middlewares = [
         middleware.error_middleware
     ]
     app = web.Application(loop=loop, middlewares=middlewares)
+    utils.load_config(app, config)
     await backend.init_engine(app)
     app.on_cleanup.append(cleanup)
-    utils.load_owners(app)
+    utils.load_keyring(app)
     utils.load_schemas(app)
     views.setup_routes(app)
     return app
@@ -26,7 +25,8 @@ def main(run=True):
     loop = get_event_loop()
     app = loop.run_until_complete(init_app(loop))
     if run:
-        web.run_app(app, port=8410)
+        port = app['config'].get('port', 8410)
+        web.run_app(app, port=port)
     return app
 
 

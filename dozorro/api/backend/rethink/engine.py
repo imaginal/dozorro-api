@@ -111,5 +111,5 @@ class RethinkEngine(object):
             first_error = status.get('first_error', 'insert error')
             logger.error('{} status {}'.format(first_error, status))
             if first_error.startswith('Duplicate primary key'):
-                raise ValueError('already exists')
+                raise ValueError('{} already exists'.format(data['id']))
             raise RuntimeError('insert error')

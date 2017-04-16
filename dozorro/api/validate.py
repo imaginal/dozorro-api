@@ -55,12 +55,11 @@ async def validate_references(payload, formschema, app):
 
 
 async def validate_schema(envelope, app):
-    try:
-        model = envelope['model']
-        payload = envelope['payload']
-        schema = envelope['schema']
-    except Exception as e:
-        raise ValueError('bad model', e)
+    model = envelope['model']
+    schema = envelope['schema']
+    payload = envelope['payload']
+    if model not in ('form', 'comment', 'admin'):
+        raise ValueError('bad model name')
     if model == 'admin':
         assert envelope['owner'] == 'root'
         return

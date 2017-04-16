@@ -39,11 +39,7 @@ class ListView(View):
         app = self.request.app
 
         validate_envelope(data, app['keyring'])
-        model = data['envelope']['model']
-        if model in ('form', 'comment', 'admin'):
-            await validate_schema(data['envelope'], app)
-        else:
-            raise ValueError('bad model name')
+        await validate_schema(data['envelope'], app)
 
         if self.request.GET.get('nosave', False):
             resp = {'validated': 1, 'created': 0}

@@ -3,7 +3,7 @@ from rapidjson import loads, dumps
 from aiohttp.web import HTTPNotFound, View, json_response
 from .validate import validate_envelope, validate_schema
 
-RE_ID = re.compile(r'^[0-9a-f,]+$')
+RE_IDLIST = re.compile(r'^[0-9a-f,]{32,3300}$')
 
 
 class ListView(View):
@@ -61,8 +61,7 @@ class ItemView(View):
         item_id = self.request.match_info['item_id']
         if len(item_id) < 32 or len(item_id) > 3300:
             raise ValueError('bad id length')
-
-        if not RE_ID.match(item_id):
+        if not RE_IDLIST.match(item_id):
             raise ValueError('bad id chars')
 
         items_list = item_id.split(',')
@@ -76,7 +75,7 @@ class ItemView(View):
 
         resp = {'data': items_list}
         # TODO make cache-control configurable
-        headers = [('Cache-Control', 'public, max-age=3600')]
+        headers = [('Cache-Control', 'public, max-age=31536000')]
         return json_response(resp, headers=headers, dumps=dumps)
 
 

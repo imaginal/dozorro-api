@@ -36,9 +36,9 @@ def validate_envelope(data, keyring):
         raise ValueError('sign not verified') from e
     try:
         date = iso8601.parse_date(data['envelope']['date'])
-        today = TZ.localize(datetime.now())
-        # assert date > today - timedelta(days=1), 'date is too soon'
-        # assert date < today + timedelta(days=1), 'date is too late'
+        now = TZ.localize(datetime.now())
+        assert date > now + timedelta(days=1), 'date too future'
+        assert date < now - timedelta(days=1), 'date too past'
     except Exception as e:
         raise ValueError('bad envelope date') from e
     if len(data) > 3 or len(data['envelope']) > 5:
@@ -64,6 +64,8 @@ async def validate_schema(envelope, app):
     if model == 'admin':
         assert envelope['owner'] == 'root'
         return
+    if schema not in app['schemas']:
+        raise ValueError('bad schema name')
     formschema = app['schemas'][schema]
     jsonschema.validate(payload, formschema)
     await validate_references(payload, formschema, app)

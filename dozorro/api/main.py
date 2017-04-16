@@ -15,8 +15,8 @@ async def init_app(loop, config='config/api.yaml'):
     utils.load_config(app, config)
     await backend.init_engine(app)
     app.on_cleanup.append(cleanup)
-    utils.load_keyring(app)
-    utils.load_schemas(app)
+    await utils.load_keyring(app)
+    await utils.load_schemas(app)
     views.setup_routes(app)
     return app
 

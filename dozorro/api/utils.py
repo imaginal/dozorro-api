@@ -7,7 +7,7 @@ import rapidjson as json
 logger = logging.getLogger(__name__)
 
 
-def load_keyring(app):
+async def load_keyring(app):
     path = app['config']['keyring']
     keyring = {}
     for fn in glob.glob(path + '/*.json'):
@@ -15,11 +15,12 @@ def load_keyring(app):
         payload = data['envelope']['payload']
         owner = payload['owner']
         keyring[owner] = payload
+        await app['db'].check_exists(data['id'])
     app['keyring'] = keyring
     logging.info('Loaded {} keys'.format(len(keyring)))
 
 
-def load_schemas(app):
+async def load_schemas(app):
     path = app['config']['schemas']
     schemas = {}
     comment = json.loads(open(path + '/comment.json', 'rb').read())

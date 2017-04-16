@@ -37,8 +37,8 @@ def validate_envelope(data, keyring):
     try:
         date = iso8601.parse_date(data['envelope']['date'])
         now = TZ.localize(datetime.now())
-        assert date > now + timedelta(days=1), 'date too future'
-        assert date < now - timedelta(days=1), 'date too past'
+        assert date > now - timedelta(days=365)
+        assert date < now + timedelta(days=1)
     except Exception as e:
         raise ValueError('bad envelope date') from e
     if len(data) > 3 or len(data['envelope']) > 5:

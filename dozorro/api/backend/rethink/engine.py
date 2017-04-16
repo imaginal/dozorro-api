@@ -14,7 +14,6 @@ class RethinkEngine(object):
     async def init_engine(self, app):
         r.set_loop_type('asyncio')
         self.conn = await r.connect(db='sandbox')
-        app.on_cleanup.append(self.cleanup)
         app['db'] = self
 
     async def check_open(self):
@@ -88,7 +87,7 @@ class RethinkEngine(object):
 
     async def check_exists(self, item_id, table='data', model=None):
         doc = await r.table(table).get(item_id).run(self.conn)
-        assert doc, '{} not found'.format(item_id)
+        assert doc is not None, '{} not found'.format(item_id)
         assert not model or model == doc['envelope']['model'], 'bad model ref'
 
 

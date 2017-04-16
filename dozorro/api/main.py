@@ -12,6 +12,7 @@ async def init_app(loop):
     ]
     app = web.Application(loop=loop, middlewares=middlewares)
     await backend.init_engine(app)
+    app.on_cleanup.append(app['db'].cleanup)
     utils.load_owners(app)
     utils.load_schemas(app)
     views.setup_routes(app)

@@ -20,7 +20,7 @@ async def error_middleware(app, handler):
                 return json_error(e.status, e.reason)
             raise
         except (AssertionError, LookupError, TypeError, ValueError) as e:
-            logger.exception('AssertionError')
+            logger.exception('ValidateError')
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:
             logger.exception('UnhandledException')

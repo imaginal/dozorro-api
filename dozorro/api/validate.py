@@ -13,6 +13,10 @@ logger = logging.getLogger(__name__)
 TZ = pytz.timezone(os.environ.get('TZ', 'Europe/Kiev'))
 
 
+class ValidateError(ValueError):
+    pass
+
+
 def hash_id(bdata):
     h1 = hashlib.sha256(bdata).digest()
     h2 = hashlib.sha256(h1).hexdigest()
@@ -25,7 +29,7 @@ def validate_envelope(data, keyring):
         ensure_ascii=False,
         sort_keys=True).encode('utf-8')
     if data['id'] != hash_id(bdata):
-        raise ValueError('bad hash id')
+        raise ValidateError('bad hash id')
     try:
         sign = data['sign']
         owner = data['envelope']['owner']
@@ -33,16 +37,16 @@ def validate_envelope(data, keyring):
         vk = ed25519.VerifyingKey(vkey_hex, encoding='hex')
         vk.verify(sign, bdata, encoding='base64')
     except Exception as e:
-        raise ValueError('sign not verified') from e
+        raise ValidateError('sign not verified') from e
     try:
         date = iso8601.parse_date(data['envelope']['date'])
         now = TZ.localize(datetime.now())
         assert date > now - timedelta(days=365)
         assert date < now + timedelta(days=1)
     except Exception as e:
-        raise ValueError('bad envelope date') from e
+        raise ValidateError('bad envelope date') from e
     if len(data) > 3 or len(data['envelope']) > 5:
-        raise ValueError('too many keys')
+        raise ValidateError('too many keys')
 
 
 async def validate_references(payload, formschema, app):
@@ -59,12 +63,12 @@ async def validate_schema(envelope, app):
     schema = envelope['schema']
     payload = envelope['payload']
     if model not in ('form', 'comment', 'admin'):
-        raise ValueError('bad model name')
+        raise ValidateError('bad model name')
     if model == 'admin':
         assert envelope['owner'] == 'root'
         return
     if schema not in app['schemas']:
-        raise ValueError('bad schema name')
+        raise ValidateError('bad schema name')
     formschema = app['schemas'][schema]
     jsonschema.validate(payload, formschema)
     await validate_references(payload, formschema, app)

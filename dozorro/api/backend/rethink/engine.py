@@ -108,5 +108,8 @@ class RethinkEngine(object):
         data['ts'] = r.now()
         status = await r.table(table).insert(data).run(self.conn)
         if status['errors']:
-            logger.error(status.get('first_error', 'insert error'))
-            raise AssertionError('insert error or already exists')
+            first_error = status.get('first_error', 'insert error')
+            logger.error('{} status {}'.format(first_error, status))
+            if first_error.startswith('Duplicate primary key'):
+                raise KeyError('already exists')
+            raise RuntimeError('insert error')

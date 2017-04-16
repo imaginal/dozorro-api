@@ -3,7 +3,7 @@ from rapidjson import loads, dumps
 from aiohttp.web import HTTPNotFound, View, json_response
 from .validate import validate_envelope, validate_schema
 
-RE_IDLIST = re.compile(r'^[0-9a-f,]{32,3300}$')
+HEX_LIST = re.compile(r'^[0-9a-f,]{32,3300}$')
 
 
 class ListView(View):
@@ -59,17 +59,17 @@ class ListView(View):
 class ItemView(View):
     async def get(self):
         item_id = self.request.match_info['item_id']
-        if len(item_id) < 32 or len(item_id) > 3300:
+        if len(item_id) > 3300:
             raise ValueError('bad id length')
-        if not RE_IDLIST.match(item_id):
+        if not HEX_LIST.match(item_id):
             raise ValueError('bad id chars')
 
-        items_list = item_id.split(',')
-        if len(items_list) > 100:
+        many_ids = item_id.split(',')
+        if len(many_ids) > 100:
             raise ValueError('too many ids')
 
         db = self.request.app['db']
-        items_list = await db.get_many(items_list)
+        items_list = await db.get_many(many_ids)
         if not items_list:
             raise HTTPNotFound()
 

@@ -4,3 +4,5 @@ aiodns
 cchardet
 ed25519
 python-rapidjson
+gunicorn
+PyYAML

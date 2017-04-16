@@ -14,10 +14,10 @@ class Client(object):
     def __init__(self, conf):
         self.api_url = conf['url']
         self.params = {
-            # 'feed': conf.get('feed', 'changes'),
+            'feed': conf.get('feed', 'changes'),
             'limit': conf.get('limit', '1000'),
             'mode': conf.get('mode', '_all_'),
-            'descending': conf.get('descending', '')
+            'descending': conf.get('descending', '1')
         }
         self.timeout = int(conf.get('timeout', 30))
         self.session = None
@@ -52,8 +52,6 @@ class Client(object):
 
 
 async def save_tender(db, tender):
-    if tender['dateModified'] < '2016-04':
-        return 0
     try:
         await db.check_exists(tender['id'], table='tender')
         return 0
@@ -62,7 +60,7 @@ async def save_tender(db, tender):
         return 1
 
 
-async def run_once(conf, loop, query_limit=1000):
+async def run_once(conf, loop, query_limit=3000):
     app = {}
     db = await init_engine(app)
 
@@ -73,8 +71,7 @@ async def run_once(conf, loop, query_limit=1000):
     fwd_client.params.pop('descending')
     bwd_list = True
 
-    # retry each 1000 empty queries, its about 10 hr
-    while loop.is_running() and query_limit:
+    while loop.is_running() and query_limit > 0:
         fwd_list = await fwd_client.get_tenders()
         if bwd_list:
             bwd_list = await bwd_client.get_tenders()
@@ -107,8 +104,7 @@ async def run_once(conf, loop, query_limit=1000):
 
 async def run_loop(loop):
     conf = {
-        'url': 'https://public.api.openprocurement.org/api/2.3/tenders',
-        'descending': '1'
+        'url': 'https://public.api.openprocurement.org/api/2.3/tenders'
     }
 
     while loop.is_running():

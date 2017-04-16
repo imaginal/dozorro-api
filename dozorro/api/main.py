@@ -3,16 +3,19 @@ from aiohttp import web
 from . import backend, middleware, utils, views
 
 
+async def cleanup(app):
+    await app['db'].close()
+
+
 async def init_app(loop):
     import logging
     logging.basicConfig(format=utils.LOG_FORMAT, level=logging.INFO)
     middlewares = [
-        backend.database_middleware,
         middleware.error_middleware
     ]
     app = web.Application(loop=loop, middlewares=middlewares)
     await backend.init_engine(app)
-    app.on_cleanup.append(app['db'].cleanup)
+    app.on_cleanup.append(cleanup)
     utils.load_owners(app)
     utils.load_schemas(app)
     views.setup_routes(app)

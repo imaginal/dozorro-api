@@ -1,3 +1,4 @@
+import asyncio
 import struct
 import rethinkdb as r
 import rethinkdb.errors
@@ -7,14 +8,16 @@ logger = logging.getLogger(__name__)
 
 
 class RethinkEngine(object):
-    @staticmethod
-    async def cleanup(app):
-        await app['db'].conn.close()
-
     async def init_engine(self, app):
         r.set_loop_type('asyncio')
         self.conn = await r.connect(db='sandbox')
+        self.task = app.loop.create_task(self.keep_alive(app))
         app['db'] = self
+
+    async def close(self):
+        self.task.cancel()
+        await self.task
+        await self.conn.close()
 
     async def check_open(self):
         try:
@@ -22,6 +25,14 @@ class RethinkEngine(object):
         except rethinkdb.errors.ReqlDriverError:
             logger.warning('Reconnect RethinkEngine')
             self.conn = await self.conn.reconnect(False)
+
+    async def keep_alive(self, app):
+        try:
+            while app.loop.is_running():
+                await self.check_open()
+                await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            pass
 
     def pack_offset(self, offset):
         if not offset:

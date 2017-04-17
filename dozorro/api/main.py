@@ -1,3 +1,4 @@
+import argparse
 from asyncio import get_event_loop
 from aiohttp import web
 from . import backend, middleware, utils, views
@@ -22,13 +23,15 @@ async def init_app(loop, config='config/api.yaml'):
     return app
 
 
-def main(run=True):
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--path')
+    parser.add_argument('--port', type=int)
+    args = parser.parse_args()
+
     loop = get_event_loop()
     app = loop.run_until_complete(init_app(loop))
-    if run:
-        port = app['config'].get('port', 8410)
-        web.run_app(app, port=port)
-    return app
+    web.run_app(app, path=args.path, port=args.port)
 
 
 if __name__ == '__main__':

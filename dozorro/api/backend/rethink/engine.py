@@ -31,7 +31,6 @@ class RethinkEngine(object):
             self.conn.check_open()
         except (AttributeError, rethinkdb.errors.ReqlDriverError) as e:
             logger.error('Connection error: {}'.format(e))
-            # self.conn = await self.conn.reconnect(False)
             self.conn = await r.connect(**self.options)
 
     async def keep_alive(self, app):
@@ -40,7 +39,7 @@ class RethinkEngine(object):
                 await asyncio.sleep(10)
                 await self.check_open()
             except asyncio.CancelledError:
-                logger.warning('Cancelled keep_alive')
+                logger.warning('KeepAlive Cancelled')
                 break
             except Exception:
                 logger.exception('KeepAlive Exception')

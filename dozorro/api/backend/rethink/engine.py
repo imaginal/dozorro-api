@@ -11,8 +11,9 @@ class RethinkEngine(object):
     async def init_engine(self, app):
         r.set_loop_type('asyncio')
         options = app['config']['database']
-        db_name = options.pop('name')
-        self.conn = await r.connect(db=db_name, **options)
+        if 'name' in options:
+            options['db'] = options.pop('name')
+        self.conn = await r.connect(**options)
         self.task = app.loop.create_task(self.keep_alive(app))
         app['db'] = self
 
@@ -23,7 +24,6 @@ class RethinkEngine(object):
 
     async def check_open(self):
         try:
-            logger.info('Check open')
             self.conn.check_open()
         except rethinkdb.errors.ReqlDriverError:
             logger.warning('Reconnect RethinkEngine')

@@ -17,7 +17,7 @@ async def load_keyring(app):
         keyring[owner] = payload
         await app['db'].check_exists(data['id'])
     app['keyring'] = keyring
-    logging.info('Loaded {} keys'.format(len(keyring)))
+    logger.info('Loaded {} keys'.format(len(keyring)))
 
 
 async def load_schemas(app):
@@ -31,13 +31,13 @@ async def load_schemas(app):
         name = fn.rsplit('/', 1)[1].replace('.json', '')
         schemas[name] = data
     app['schemas'] = schemas
-    logging.info('Loaded {} schemas'.format(len(schemas)))
+    logger.info('Loaded {} schemas'.format(len(schemas)))
 
 
-def load_config(app, filename):
+def load_config(filename, app=None, configure_logging=True):
     config = yaml.load(open(filename))
-    if 'logging' in config:
-        logging.config.fileConfig(config['logging'],
-            disable_existing_loggers=False)
-    logging.info('Load config from {}'.format(filename))
-    app['config'] = config
+    if 'logging' in config and configure_logging:
+        logconf = yaml.load(open(config['logging']))
+        logging.config.dictConfig(logconf)
+    logger.info('Load config from {}'.format(filename))
+    return config

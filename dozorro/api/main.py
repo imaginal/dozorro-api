@@ -13,7 +13,7 @@ async def init_app(loop, config='config/api.yaml'):
         middleware.error_middleware
     ]
     app = web.Application(loop=loop, middlewares=middlewares)
-    utils.load_config(app, config)
+    app['config'] = utils.load_config(config)
     await backend.init_engine(app)
     app.on_cleanup.append(cleanup)
     await utils.load_keyring(app)

@@ -18,24 +18,30 @@ class RethinkEngine(object):
         app['db'] = self
 
     async def close(self):
-        self.task.cancel()
-        await self.task
-        await self.conn.close()
+        if self.task:
+            self.task.cancel()
+            await self.task
+            self.task = None
+        if self.conn:
+            await self.conn.close()
+            self.conn = None
 
     async def check_open(self):
         try:
             self.conn.check_open()
-        except rethinkdb.errors.ReqlDriverError:
+        except (AttributeError, rethinkdb.errors.ReqlDriverError):
             logger.warning('Reconnect RethinkEngine')
             self.conn = await self.conn.reconnect(False)
 
     async def keep_alive(self, app):
-        try:
-            while app.loop.is_running():
-                await self.check_open()
+        while app.loop.is_running():
+            try:
                 await asyncio.sleep(10)
-        except asyncio.CancelledError:
-            pass
+                await self.check_open()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception('KeepAliveException')
 
     def pack_offset(self, offset):
         if not offset:
@@ -65,6 +71,7 @@ class RethinkEngine(object):
         items_list = list()
         first_ts = None
         last_ts = None
+        # for doc in cursor:
         while await cursor.fetch_next():
             doc = await cursor.next()
             if not doc:

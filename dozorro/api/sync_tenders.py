@@ -9,7 +9,7 @@ import logging.config
 from functools import partial
 from . import backend, utils
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('dozorro.api.sync')
 
 
 class FakeApp(dict):
@@ -113,7 +113,7 @@ async def run_loop(loop, config='config/api.yaml'):
         config = sys.argv[1]
 
     app = FakeApp(loop)
-    utils.load_config(app, config)
+    app['config'] = utils.load_config(config)
 
     while loop.is_running():
         try:

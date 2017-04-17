@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 class RethinkEngine(object):
     async def init_engine(self, app):
         r.set_loop_type('asyncio')
-        options = app['config']['database']
-        if 'name' in options:
-            options['db'] = options.pop('name')
-        self.conn = await r.connect(**options)
+        self.options = dict(app['config']['database'])
+        if 'name' in self.options:
+            self.options['db'] = self.options.pop('name')
+        self.conn = await r.connect(**self.options)
         self.task = app.loop.create_task(self.keep_alive(app))
         app['db'] = self
 
@@ -29,9 +29,10 @@ class RethinkEngine(object):
     async def check_open(self):
         try:
             self.conn.check_open()
-        except (AttributeError, rethinkdb.errors.ReqlDriverError):
-            logger.warning('Reconnect RethinkEngine')
-            self.conn = await self.conn.reconnect(False)
+        except (AttributeError, rethinkdb.errors.ReqlDriverError) as e:
+            logger.error('Connection error: {}'.format(e))
+            # self.conn = await self.conn.reconnect(False)
+            self.conn = await r.connect(**self.options)
 
     async def keep_alive(self, app):
         while app.loop.is_running():
@@ -39,9 +40,10 @@ class RethinkEngine(object):
                 await asyncio.sleep(10)
                 await self.check_open()
             except asyncio.CancelledError:
+                logger.warning('Cancelled keep_alive')
                 break
             except Exception:
-                logger.exception('KeepAliveException')
+                logger.exception('KeepAlive Exception')
 
     def pack_offset(self, offset):
         if not offset:

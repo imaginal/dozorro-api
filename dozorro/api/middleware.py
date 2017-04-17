@@ -23,6 +23,6 @@ async def error_middleware(app, handler):
             logger.exception('ValidateError')
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:
-            logger.exception('UnhandledException')
-            return json_error(500, 'Unhandled Error: {}'.format(e))
+            logger.exception('Unhandled Exception')
+            return json_error(500, 'Unhandled error: {}'.format(e))
     return middleware_handler

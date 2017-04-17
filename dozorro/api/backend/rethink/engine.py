@@ -23,6 +23,7 @@ class RethinkEngine(object):
 
     async def check_open(self):
         try:
+            logger.info('Check open')
             self.conn.check_open()
         except rethinkdb.errors.ReqlDriverError:
             logger.warning('Reconnect RethinkEngine')

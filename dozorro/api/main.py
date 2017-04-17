@@ -9,6 +9,7 @@ async def cleanup(app):
 
 async def init_app(loop, config='config/api.yaml'):
     middlewares = [
+        backend.database_middleware,
         middleware.error_middleware
     ]
     app = web.Application(loop=loop, middlewares=middlewares)

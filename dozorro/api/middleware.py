@@ -1,5 +1,6 @@
 from rapidjson import dumps
 from aiohttp.web import json_response, HTTPException
+from jsonschema.exceptions import ValidationError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ async def error_middleware(app, handler):
                 logger.exception('HTTPException')
                 return json_error(e.status, e.reason)
             raise
-        except (AssertionError, LookupError, TypeError, ValueError) as e:
+        except (AssertionError, LookupError, TypeError, ValueError, ValidationError) as e:
             logger.exception('ValidateError')
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:

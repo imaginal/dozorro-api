@@ -9,15 +9,20 @@ import logging.config
 from functools import partial
 from . import backend, utils
 
-logger = logging.getLogger('dozorro.api.sync')
+logger = logging.getLogger('dozorro.api.sync_tenders')
 
 
 class FakeApp(dict):
     def __init__(self, loop):
         self.loop = loop
 
+
 class Client(object):
-    def __init__(self, config):
+    session = None
+
+    @classmethod
+    async def create(cls, config, loop, params={}):
+        self = Client()
         self.api_url = config['url']
         self.params = {
             'feed': config.get('feed', 'changes'),
@@ -25,31 +30,30 @@ class Client(object):
             'mode': config.get('mode', '_all_'),
             'descending': config.get('descending', '1')
         }
-        self.timeout = int(config.get('timeout', 30))
-        self.session = None
-
-    def __del__(self):
-        if self.session:
-            self.session.close()
-
-    async def async_init(self, loop, params={}):
-        self.session = aiohttp.ClientSession(loop=loop)
-
-        async with self.session.head(
-                url=self.api_url,
-                params=self.params,
-                timeout=self.timeout) as resp:
-            assert resp.status == 200
-
         self.params.update(params)
-
+        if not cls.session:
+            base_timeout = int(config.get('timeout', 30))
+            cls.session = aiohttp.ClientSession(loop=loop,
+                        conn_timeout=base_timeout,
+                        read_timeout=base_timeout,
+                        raise_for_status=True)
+            self.session = cls.session
+        await self.init_session_cookie()
         return self
 
+    @classmethod
+    async def close(cls):
+        if cls.session and not cls.session.closed:
+            logger.info("Close session")
+            await cls.session.close()
+            cls.session = None
+
+    async def init_session_cookie(self):
+        async with self.session.head(url=self.api_url, params=self.params) as resp:
+            await resp.text()
+
     async def get_tenders(self):
-        async with self.session.get(
-                url=self.api_url,
-                params=self.params,
-                timeout=self.timeout) as resp:
+        async with self.session.get(url=self.api_url, params=self.params) as resp:
             data = await resp.json()
             if 'next_page' in data:
                 self.params['offset'] = data['next_page']['offset']
@@ -59,19 +63,19 @@ class Client(object):
 
 async def save_tender(db, tender):
     try:
-        await db.check_exists(tender['id'], table='tender')
+        await db.check_exists(tender['id'], table='tenders')
         return 0
     except AssertionError:
-        await db.put_item(tender, table='tender')
+        await db.put_item(tender, table='tenders')
         return 1
 
 
-async def run_once(app, loop, query_limit=3000):
+async def run_once(app, loop, query_limit=1000):
     db = await backend.init_engine(app)
     config = app['config']['client']
 
-    fwd_client = await Client(config).async_init(loop)
-    bwd_client = await Client(config).async_init(loop)
+    fwd_client = await Client.create(config, loop)
+    bwd_client = await Client.create(config, loop)
 
     await fwd_client.get_tenders()
     fwd_client.params.pop('descending')
@@ -122,6 +126,7 @@ async def run_loop(loop, config='config/api.yaml'):
             break
         except Exception as e:
             logger.exception('Unhandled Exception')
+            await Client.close()
             await asyncio.sleep(10)
 
     logger.info('Loop closed.')

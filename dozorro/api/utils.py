@@ -13,6 +13,8 @@ async def load_keyring(app):
     for fn in glob.glob(path + '/*.json'):
         logger.info('Load pubkey {}'.format(fn))
         data = json.loads(open(fn, 'rb').read())
+        model = data['envelope']['model']
+        assert model == 'admin/publicKey', 'bad key model'
         payload = data['envelope']['payload']
         owner = payload['owner']
         keyring[owner] = payload
@@ -33,6 +35,8 @@ async def load_schemas(app):
     for fn in glob.glob(path + '/*.json'):
         logger.info('Load schema {}'.format(fn))
         root = json.loads(open(fn, 'rb').read())
+        model = data['envelope']['model']
+        assert model == 'admin/jsonSchema', 'bad schema model'
         payload = root['envelope']['payload']
         data = payload['jsonSchema']
         if 'definitions' not in data:

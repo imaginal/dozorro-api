@@ -85,13 +85,11 @@ class RethinkEngine(object):
         last_ts = self.pack_offset(last_ts)
         return (items_list, first_ts, last_ts)
 
-
     async def get_item(self, item_id, table='data'):
         doc = await r.table(table).get(item_id).run(self.conn)
         if doc:
             doc.pop('ts')
         return doc
-
 
     async def get_many(self, items_list, table='data'):
         if len(items_list) == 1:
@@ -101,17 +99,16 @@ class RethinkEngine(object):
         docs = list()
         while await cursor.fetch_next():
             doc = await cursor.next()
-            if doc:
-                doc.pop('ts')
-                docs.append(doc)
+            if not doc:
+                break
+            doc.pop('ts')
+            docs.append(doc)
         return docs
-
 
     async def check_exists(self, item_id, table='data', model=None):
         doc = await r.table(table).get(item_id).run(self.conn)
-        assert doc is not None, '{} not found'.format(item_id)
-        assert not model or model == doc['envelope']['model'], 'bad model ref'
-
+        assert doc is not None, '{} not found in {}'.format(item_id, table)
+        # assert not model or model == doc['envelope']['model'], 'bad model ref'
 
     async def put_item(self, data, table='data'):
         data['ts'] = r.now()

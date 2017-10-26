@@ -11,6 +11,7 @@ async def load_keyring(app):
     path = app['config']['keyring']
     keyring = {}
     for fn in glob.glob(path + '/*.json'):
+        logger.info('Load pubkey {}'.format(fn))
         data = json.loads(open(fn, 'rb').read())
         payload = data['envelope']['payload']
         owner = payload['owner']
@@ -23,13 +24,22 @@ async def load_keyring(app):
 async def load_schemas(app):
     path = app['config']['schemas']
     schemas = {}
-    comment = json.loads(open(path + '/comment.json', 'rb').read())
+    comment = {}
+    for fn in glob.glob(path + '/comment.json'):
+        logger.info('Load comment {}'.format(fn))
+        root = json.loads(open(fn, 'rb').read())
+        payload = root['envelope']['payload']
+        comment = payload['jsonschema']
     for fn in glob.glob(path + '/*.json'):
-        data = json.loads(open(fn, 'rb').read())
+        logger.info('Load schema {}'.format(fn))
+        root = json.loads(open(fn, 'rb').read())
+        payload = root['envelope']['payload']
+        data = payload['jsonschema']
         if 'definitions' not in data:
             data['definitions'] = comment['definitions']
-        name = fn.rsplit('/', 1)[1].replace('.json', '')
+        name = payload['schema']
         schemas[name] = data
+        await app['db'].check_exists(root['id'])
     app['schemas'] = schemas
     logger.info('Loaded {} schemas'.format(len(schemas)))
 

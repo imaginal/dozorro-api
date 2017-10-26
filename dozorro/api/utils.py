@@ -29,16 +29,16 @@ async def load_schemas(app):
         logger.info('Load comment {}'.format(fn))
         root = json.loads(open(fn, 'rb').read())
         payload = root['envelope']['payload']
-        comment = payload['jsonschema']
+        comment = payload['jsonSchema']
     for fn in glob.glob(path + '/*.json'):
         logger.info('Load schema {}'.format(fn))
         root = json.loads(open(fn, 'rb').read())
         payload = root['envelope']['payload']
-        data = payload['jsonschema']
+        data = payload['jsonSchema']
         if 'definitions' not in data:
             data['definitions'] = comment['definitions']
-        name = payload['schema']
-        schemas[name] = data
+        model, schema = payload['model'].split('/')
+        schemas[schema] = data
         await app['db'].check_exists(root['id'])
     app['schemas'] = schemas
     logger.info('Loaded {} schemas'.format(len(schemas)))

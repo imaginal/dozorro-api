@@ -45,7 +45,7 @@ def validate_envelope(data, keyring):
         assert date < now + timedelta(days=1)
     except Exception as e:
         raise ValidateError('bad envelope date') from e
-    if len(data) > 3 or len(data['envelope']) > 5:
+    if len(data) > 3 or len(data['envelope']) > 4:
         raise ValidateError('too many keys')
 
 
@@ -59,16 +59,15 @@ async def validate_references(payload, formschema, app):
 
 
 async def validate_schema(envelope, app):
-    model = envelope['model']
-    schema = envelope['schema']
+    model, schema = envelope['model'].split('/')
     payload = envelope['payload']
-    if model not in ('form', 'comment', 'admin'):
+    if model not in ('form', 'admin'):
         raise ValidateError('bad model name')
     if model == 'admin':
         assert envelope['owner'] == 'root'
         return
     if schema not in app['schemas']:
-        raise ValidateError('bad schema name')
+        raise ValidateError('unknown schema name "{}"'.format(schema))
     formschema = app['schemas'][schema]
     jsonschema.validate(payload, formschema)
     await validate_references(payload, formschema, app)

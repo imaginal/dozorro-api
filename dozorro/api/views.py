@@ -30,27 +30,6 @@ class ListView(View):
             resp['next_page'] = ListView.offset_args(last, reverse)
         return json_response(resp, dumps=dumps)
 
-    async def post(self):
-        return await self.put()
-
-    async def put(self):
-        body = await self.request.content.read()
-        data = loads(body)
-        app = self.request.app
-
-        validate_envelope(data, app['keyring'])
-        await validate_schema(data['envelope'], app)
-
-        if self.request.GET.get('nosave', False):
-            resp = {'validated': 1, 'created': 0}
-            return json_response(resp, dumps=dumps)
-
-        await app['db'].put_item(data)
-        url = app.router['item_view'].url_for(item_id=data['id'])
-        headers = [('Location', url.path)]
-        resp = {'created': 1}
-        return json_response(resp, status=201, headers=headers, dumps=dumps)
-
 
 class ItemView(View):
     async def get(self):
@@ -74,7 +53,37 @@ class ItemView(View):
         headers = [('Cache-Control', 'public, max-age=31536000')]
         return json_response(resp, headers=headers, dumps=dumps)
 
+    async def put(self):
+        item_id = self.request.match_info['item_id']
+        ct = self.request.headers.get('Content-Type')
+        ua = self.request.headers.get('User-Agent')
+        if not ct or not ct.startswith('application/json'):
+            raise ValidateError('Content-Type must be application/json')
 
-def setup_routes(app, prefix='/api/v1'):
+        body = await self.request.content.read()
+        data = loads(body)
+        app = self.request.app
+
+        validate_envelope(data, app['keyring'])
+        await validate_schema(data['envelope'], app)
+
+        if item_id != data['id']:
+            raise ValidateError('id in uri and data mismatch')
+
+        if ua and ua.find(data['envelope']['owner']) < 0:
+            raise ValidateError('user-agent must include owner')
+
+        if self.request.GET.get('nosave', False):
+            resp = {'validated': 1, 'created': 0}
+            return json_response(resp, dumps=dumps)
+
+        await app['db'].put_item(data)
+        url = app.router['item_view'].url_for(item_id=data['id'])
+        headers = [('Location', url.path)]
+        resp = {'created': 1}
+        return json_response(resp, status=201, headers=headers, dumps=dumps)
+
+
+def setup_routes(app, prefix='/api/v1.0'):
     app.router.add_route('*', prefix + '/data', ListView, name='list_view')
     app.router.add_route('*', prefix + '/data/{item_id}', ItemView, name='item_view')

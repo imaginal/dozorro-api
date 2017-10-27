@@ -84,6 +84,6 @@ class ItemView(View):
         return json_response(resp, status=201, headers=headers, dumps=dumps)
 
 
-def setup_routes(app, prefix='/api/v1.0'):
+def setup_routes(app, prefix='/api/v1'):
     app.router.add_route('*', prefix + '/data', ListView, name='list_view')
     app.router.add_route('*', prefix + '/data/{item_id}', ItemView, name='item_view')

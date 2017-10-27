@@ -52,7 +52,7 @@ def validate_envelope(data, keyring):
 async def validate_references(payload, formschema, app):
     for key, value in formschema['properties'].items():
         if 'reference' in value and key in payload:
-            if value['reference'] == 'tender':
+            if value['reference'] == 'tenders':
                 await app['db'].check_exists(payload[key], table='tenders')
             else:
                 await app['db'].check_exists(payload[key], model=value['reference'])

@@ -35,7 +35,7 @@ async def load_schemas(app):
     for fn in glob.glob(path + '/*.json'):
         logger.info('Load schema {}'.format(fn))
         root = json.loads(open(fn, 'rb').read())
-        model = data['envelope']['model']
+        model = root['envelope']['model']
         assert model == 'admin/schema', 'bad schema model'
         payload = root['envelope']['payload']
         data = payload['schema']

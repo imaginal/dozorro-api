@@ -70,14 +70,21 @@ async def save_tender(db, tender):
         return 1
 
 
-async def run_once(app, loop, query_limit=1000):
+async def run_once(app, loop, steps_back=1, query_limit=2000):
     db = await backend.init_engine(app)
     config = app['config']['client']
+
+    if 'query_limit' in config:
+        query_limit = int(config['query_limit'])
+    if 'steps_back' in config:
+        steps_back = int(config['steps_back'])
 
     fwd_client = await Client.create(config, loop)
     bwd_client = await Client.create(config, loop)
 
-    await fwd_client.get_tenders()
+    for _ in range(steps_back):
+        await fwd_client.get_tenders()
+        await asyncio.sleep(0.1)
     fwd_client.params.pop('descending')
     bwd_list = True
 
@@ -88,26 +95,25 @@ async def run_once(app, loop, query_limit=1000):
 
         if not fwd_list and not bwd_list:
             query_limit -= 1
+            logger.info('Nothing for update, query_limit %d', query_limit)
             await asyncio.sleep(10)
             continue
 
-        tender = {}
-        updated = 0
+        if fwd_list:
+            updated = 0
+            for tender in fwd_list:
+                updated += await save_tender(db, tender)
 
-        for tender in bwd_list:
-            updated += await save_tender(db, tender)
+            logger.info('Forward fetched %d updated %d last %s',
+                len(fwd_list), updated, tender.get('dateModified'))
 
-        logger.info('Backward client fetched %d updated %d last %s',
-            len(bwd_list), updated, tender.get('dateModified'))
+        if bwd_list:
+            updated = 0
+            for tender in bwd_list:
+                updated += await save_tender(db, tender)
 
-        tender = {}
-        updated = 0
-
-        for tender in fwd_list:
-            updated += await save_tender(db, tender)
-
-        logger.info('Forward client fetched %d updated %d last %s',
-            len(fwd_list), updated, tender.get('dateModified'))
+            logger.info('Backward fetched %d updated %d last %s',
+                len(bwd_list), updated, tender.get('dateModified'))
 
         await asyncio.sleep(1)
 

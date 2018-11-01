@@ -60,8 +60,7 @@ class ItemView(View):
         if not ct or not ct.startswith('application/json'):
             raise ValidateError('Content-Type must be application/json')
 
-        body = await self.request.content.read()
-        data = loads(body)
+        data = await self.request.json(loads=loads)
         app = self.request.app
 
         validate_envelope(data, app['keyring'])

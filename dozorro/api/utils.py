@@ -1,5 +1,6 @@
 import glob
 import yaml
+import iso8601
 import logging
 import logging.config
 import rapidjson as json
@@ -16,8 +17,12 @@ async def load_keyring(app):
         model = data['envelope']['model']
         assert model == 'admin/pubkey', 'bad key model'
         payload = data['envelope']['payload']
+        payload['validSince'] = iso8601.parse_date(payload['validSince'])
+        payload['validTill'] = iso8601.parse_date(payload['validTill'])
         owner = payload['owner']
-        keyring[owner] = payload
+        if owner not in keyring:
+            keyring[owner] = []
+        keyring[owner].append(payload)
         await app['db'].check_exists(data['id'])
     app['keyring'] = keyring
     logger.info('Loaded {} keys'.format(len(keyring)))

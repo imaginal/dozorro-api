@@ -24,34 +24,54 @@ def hash_id(bdata):
 
 
 def validate_envelope(data, keyring):
-    bdata = dumps(data['envelope'],
+    if len(data) > 3 or len(data['envelope']) > 4:
+        raise ValidateError('bad data structure')
+    try:
+        now = TZ.localize(datetime.now())
+        env_date = iso8601.parse_date(data['envelope']['date'])
+        assert env_date > now - timedelta(days=3)
+        assert env_date < now + timedelta(days=1)
+    except Exception as e:
+        raise ValidateError('bad envelope date') from e
+
+    bin_data = dumps(data['envelope'],
         skipkeys=False,
         ensure_ascii=False,
         sort_keys=True).encode('utf-8')
-    if data['id'] != hash_id(bdata):
+
+    if data['id'] != hash_id(bin_data):
         raise ValidateError('bad hash id')
+
     try:
         sign = data['sign']
         owner = data['envelope']['owner']
-        vkey_hex = keyring[owner]['publicKey']
-        vk = ed25519.VerifyingKey(vkey_hex, encoding='hex')
-        vk.verify(sign, bdata, encoding='base64')
+        verified = False
+        last_exc = None
+        if owner not in keyring:
+            raise KeyError('key not found')
+        for keydata in keyring[owner]:
+            if keydata['validSince'] < env_date < keydata['validTill']:
+                vkey_hex = keydata['publicKey']
+                vk = ed25519.VerifyingKey(vkey_hex, encoding='hex')
+                try:
+                    vk.verify(sign, bin_data, encoding='base64')
+                    logger.info("Sign verified {} pubkey {}/{}".format(
+                                data['id'], keydata['owner'], vkey_hex[:8]))
+                    verified = True
+                    break
+                except ed25519.BadSignatureError as exc:
+                    last_exc = exc
+        if not verified:
+            raise last_exc if last_exc else IndexError('key not found')
     except Exception as e:
         raise ValidateError('sign not verified') from e
-    try:
-        date = iso8601.parse_date(data['envelope']['date'])
-        now = TZ.localize(datetime.now())
-        assert date > now - timedelta(days=365)
-        assert date < now + timedelta(days=1)
-    except Exception as e:
-        raise ValidateError('bad envelope date') from e
-    if len(data) > 3 or len(data['envelope']) > 4:
-        raise ValidateError('too many keys')
 
 
 async def validate_references(payload, formschema, app):
     for key, value in formschema['properties'].items():
         if 'reference' in value and key in payload:
+            if value['reference'] == 'tenders/contracts':
+                continue
             if value['reference'] == 'tenders':
                 await app['db'].check_exists(payload[key], table='tenders')
             else:

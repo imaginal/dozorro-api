@@ -13,8 +13,10 @@ class RethinkEngine(object):
         self.options = dict(app['config']['database'])
         self.options['db'] = self.options.pop('name')
         self.read_mode = self.options.pop('read_mode', 'single')
+        keep_alive = self.options.pop('keep_alive', False)
         self.conn = await r.connect(**self.options)
-        self.task = app.loop.create_task(self.keep_alive(app))
+        if keep_alive:
+            self.task = app.loop.create_task(self.keep_alive(app))
         app['db'] = self
 
     async def close(self):
@@ -122,3 +124,8 @@ class RethinkEngine(object):
             if first_error.startswith('Duplicate primary key'):
                 raise ValueError('{} already exists'.format(data['id']))
             raise RuntimeError('insert error')
+
+    async def init_tables(self):
+        await r.table_create('data').run(self.conn)
+        await r.table_create('tenders').run(self.conn)
+        await r.table('data').index_create('ts').run(self.conn)

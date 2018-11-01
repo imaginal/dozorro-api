@@ -8,6 +8,11 @@ import rapidjson as json
 logger = logging.getLogger(__name__)
 
 
+class FakeApp(dict):
+    def __init__(self, loop):
+        self.loop = loop
+
+
 async def load_keyring(app):
     path = app['config']['keyring']
     keyring = {}

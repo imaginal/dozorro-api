@@ -12,11 +12,6 @@ from . import backend, utils
 logger = logging.getLogger('dozorro.api.sync_tenders')
 
 
-class FakeApp(dict):
-    def __init__(self, loop):
-        self.loop = loop
-
-
 class Client(object):
     session = None
 
@@ -122,7 +117,7 @@ async def run_loop(loop, config='config/api.yaml'):
     if len(sys.argv) > 1:
         config = sys.argv[1]
 
-    app = FakeApp(loop)
+    app = utils.FakeApp(loop)
     app['config'] = utils.load_config(config)
 
     while loop.is_running():

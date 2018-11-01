@@ -6,6 +6,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+async def dump_request(request):
+    request_headers = "\n".join(["{}: {}".format(k, v)
+        for k, v in request.headers.items()])
+    request_body = await request.text()
+    return "{} {}\n{}\n\n{}\n\n".format(
+            request.method,
+            request.raw_path,
+            request_headers,
+            request_body)
+
+
 def json_error(status, message):
     return json_response({'error': message}, status=status, dumps=dumps)
 
@@ -21,9 +32,9 @@ async def error_middleware(app, handler):
                 return json_error(e.status, e.reason)
             raise
         except (AssertionError, LookupError, TypeError, ValueError, ValidationError) as e:
-            logger.exception('ValidateError')
+            logger.exception('ValidateError for {}'.format(await dump_request(request)))
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:
-            logger.exception('Unhandled Exception')
+            logger.exception('Unhandled Exception for {}'.format(await dump_request(request)))
             return json_error(500, 'Unhandled error: {}'.format(e))
     return middleware_handler

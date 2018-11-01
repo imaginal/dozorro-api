@@ -11,8 +11,8 @@ class RethinkEngine(object):
     async def init_engine(self, app):
         r.set_loop_type('asyncio')
         self.options = dict(app['config']['database'])
-        if 'name' in self.options:
-            self.options['db'] = self.options.pop('name')
+        self.options['db'] = self.options.pop('name')
+        self.read_mode = self.options.pop('read_mode', 'single')
         self.conn = await r.connect(**self.options)
         self.task = app.loop.create_task(self.keep_alive(app))
         app['db'] = self
@@ -63,7 +63,7 @@ class RethinkEngine(object):
                 minval = offset
         if reverse:
             oindex = r.desc(oindex)
-        cursor = await (r.table(table)
+        cursor = await (r.table(table, read_mode=self.read_mode)
             .between(minval, maxval, index='ts', left_bound='open')
             .order_by(index=oindex)
             .limit(limit)
@@ -86,7 +86,8 @@ class RethinkEngine(object):
         return (items_list, first_ts, last_ts)
 
     async def get_item(self, item_id, table='data'):
-        doc = await r.table(table).get(item_id).run(self.conn)
+        doc = await (r.table(table, read_mode=self.read_mode)
+            .get(item_id).run(self.conn))
         if doc:
             doc.pop('ts')
         return doc
@@ -95,7 +96,8 @@ class RethinkEngine(object):
         if len(items_list) == 1:
             doc = await self.get_item(items_list[0], table)
             return [doc, ] if doc else []
-        cursor = await r.table(table).get_all(*items_list).run(self.conn)
+        cursor = await (r.table(table, read_mode=self.read_mode)
+                .get_all(*items_list).run(self.conn))
         docs = list()
         while await cursor.fetch_next():
             doc = await cursor.next()
@@ -106,7 +108,8 @@ class RethinkEngine(object):
         return docs
 
     async def check_exists(self, item_id, table='data', model=None):
-        doc = await r.table(table).get(item_id).run(self.conn)
+        doc = await (r.table(table, read_mode=self.read_mode).get(item_id)
+                .run(self.conn))
         assert doc is not None, '{} not found in {}'.format(item_id, table)
         # assert not model or model == doc['envelope']['model'], 'bad model ref'
 

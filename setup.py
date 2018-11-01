@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = "0.1"
+version = "0.2"
 
 requires = [
     "aiohttp",
@@ -9,6 +9,7 @@ requires = [
 ]
 
 entry_points = {
+    'console_scripts': ['sync_tenders=dozorro.api.sync_tenders:main']
 }
 
 setup(

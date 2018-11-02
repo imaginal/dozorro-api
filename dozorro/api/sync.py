@@ -9,7 +9,7 @@ import logging.config
 from functools import partial
 from . import backend, utils
 
-logger = logging.getLogger('dozorro.api.sync_tenders')
+logger = logging.getLogger('dozorro.api.sync')
 
 
 class Client(object):

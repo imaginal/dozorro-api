@@ -11,7 +11,8 @@ requires = [
 entry_points = {
     'console_scripts': [
         'cdb_init=dozorro.api.main:cdb_init',
-        'sync_tenders=dozorro.api.sync_tenders:main'
+        'cdb_put=dozorro.api.main:cdb_put',
+        'cdb_sync=dozorro.api.sync:main'
     ]
 }
 

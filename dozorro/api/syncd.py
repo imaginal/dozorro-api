@@ -4,6 +4,7 @@ import signal
 import logging
 import asyncio
 import aiohttp
+import argparse
 import rapidjson
 import logging.config
 from functools import partial
@@ -59,34 +60,31 @@ class Client(object):
 async def save_tender(db, tender):
     try:
         await db.check_exists(tender['id'], table='tenders')
-        return 0
     except AssertionError:
-        await db.put_item(tender, table='tenders')
-        return 1
+        return await db.put_item(tender, table='tenders')
 
 
-async def run_once(app, loop, steps_back=1, query_limit=2000):
-    db = await backend.init_engine(app)
+async def run_once(app, loop, query_limit=2000):
+    await backend.init_engine(app)
+    db = app['db']
     config = app['config']['client']
-
-    if 'query_limit' in config:
-        query_limit = int(config['query_limit'])
-    if 'steps_back' in config:
-        steps_back = int(config['steps_back'])
 
     fwd_client = await Client.create(config, loop)
     bwd_client = await Client.create(config, loop)
 
-    for _ in range(steps_back):
-        await fwd_client.get_tenders()
-        await asyncio.sleep(0.1)
+    await fwd_client.get_tenders()
     fwd_client.params.pop('descending')
-    bwd_list = True
+
+    if 'sync_tenders' in app['config']:
+        sync_config = app['config']['sync_config']
+        query_limit = int(sync_config['query_limit'])
 
     while loop.is_running() and query_limit > 0:
         fwd_list = await fwd_client.get_tenders()
-        if bwd_list:
+        if bwd_client:
             bwd_list = await bwd_client.get_tenders()
+            if not bwd_list:
+                bwd_client = None
 
         if not fwd_list and not bwd_list:
             query_limit -= 1
@@ -113,37 +111,53 @@ async def run_once(app, loop, steps_back=1, query_limit=2000):
         await asyncio.sleep(1)
 
 
-async def run_loop(loop, config='config/api.yaml'):
-    if len(sys.argv) > 1:
-        config = sys.argv[1]
-
+async def run_loop(loop, config):
     app = utils.FakeApp(loop)
     app['config'] = utils.load_config(config)
 
     while loop.is_running():
         try:
             await run_once(app, loop)
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, SystemExit, KeyboardInterrupt):
             break
         except Exception as e:
             logger.exception('Unhandled Exception')
             await Client.close()
             await asyncio.sleep(10)
 
-    logger.info('Loop closed.')
+    try:
+        await Client.close()
+        await app['db'].close()
+    except Exception:
+        pass
+    if loop.is_running():
+        loop.stop()
+    logger.info('Leave loop')
 
 
-def shutdown(loop):
-    for task in asyncio.Task.all_tasks(loop):
-        task.cancel()
+def shutdown(loop, task):
+    loop.remove_signal_handler(signal.SIGTERM)
+    task.cancel()
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config', default='config/api.yaml')
+    parser.add_argument('-l', '--logfile')
+    parser.add_argument('-p', '--pidfile')
+    parser.add_argument('-d', '--daemon', default=False, action='store_true')
+    args = parser.parse_args()
+    if args.daemon:
+        utils.daemonize(args.logfile)
+    if args.pidfile:
+        utils.write_pidfile(args.pidfile)
+
     loop = asyncio.get_event_loop()
-    shutdown_loop = partial(shutdown, loop)
+    main_task = loop.create_task(run_loop(loop, args.config))
+    shutdown_loop = partial(shutdown, loop, main_task)
     loop.add_signal_handler(signal.SIGHUP, shutdown_loop)
     loop.add_signal_handler(signal.SIGTERM, shutdown_loop)
-    loop.run_until_complete(run_loop(loop))
+    loop.run_until_complete(main_task)
     loop.close()
 
 if __name__ == '__main__':

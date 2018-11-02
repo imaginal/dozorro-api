@@ -113,6 +113,7 @@ class RethinkEngine(object):
                 .run(self.conn))
         assert doc is not None, '{} not found in {}'.format(item_id, table)
         # assert not model or model == doc['envelope']['model'], 'bad model ref'
+        return True
 
     async def put_item(self, data, table='data'):
         data['ts'] = r.now()
@@ -123,6 +124,7 @@ class RethinkEngine(object):
             if first_error.startswith('Duplicate primary key'):
                 raise ValueError('{} already exists'.format(data['id']))
             raise RuntimeError('insert error')
+        return True
 
     async def init_tables(self):
         await r.table_create('data').run(self.conn)

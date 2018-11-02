@@ -41,10 +41,9 @@ class RethinkEngine(object):
                 await asyncio.sleep(10)
                 await self.check_open()
             except asyncio.CancelledError:
-                logger.warning('KeepAlive Cancelled')
                 break
             except Exception:
-                logger.exception('KeepAlive Exception')
+                logger.exception('RethinkEngine.KeepAlive')
 
     def pack_offset(self, offset):
         if not offset:

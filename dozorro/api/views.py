@@ -60,7 +60,8 @@ class ItemView(View):
         if not ct or not ct.startswith('application/json'):
             raise ValidateError('Content-Type must be application/json')
 
-        data = await self.request.json(loads=loads)
+        body = await self.request.content.read()
+        data = loads(body)
         app = self.request.app
 
         validate_envelope(data, app['keyring'])
@@ -70,7 +71,7 @@ class ItemView(View):
             raise ValidateError('id in uri and data mismatch')
 
         if ua and ua.find(data['envelope']['owner']) < 0:
-            raise ValidateError('user-agent must include owner')
+            raise ValidateError('User-Agent must include owner')
 
         if self.request.GET.get('nosave', False):
             resp = {'validated': 1, 'created': 0}

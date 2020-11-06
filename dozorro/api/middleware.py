@@ -28,13 +28,16 @@ async def error_middleware(app, handler):
             return response
         except HTTPException as e:
             if e.status >= 400:
-                logger.exception('HTTPException')
+                method, path = request.method, request.raw_path
+                logger.error('HTTPException {} on {} {}'.format(e, method, path))
                 return json_error(e.status, e.reason)
             raise
         except (AssertionError, LookupError, TypeError, ValueError, ValidationError) as e:
-            logger.exception('ValidateError for {}'.format(await dump_request(request)))
+            request_body = await dump_request(request) if request else ''
+            logger.exception('ValidateError on {}'.format(request_body))
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:
-            logger.exception('Unhandled Exception for {}'.format(await dump_request(request)))
+            request_body = await dump_request(request) if request else ''
+            logger.exception('Unhandled Exception on {}'.format(request_body))
             return json_error(500, 'Unhandled error: {}'.format(e))
     return middleware_handler

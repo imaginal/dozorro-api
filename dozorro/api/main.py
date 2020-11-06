@@ -81,14 +81,15 @@ def cdb_put():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config')
-    parser.add_argument('--path')
+    parser.add_argument('--conf')
+    parser.add_argument('--sock')
+    parser.add_argument('--host')
     parser.add_argument('--port', type=int)
     args = parser.parse_args()
 
     loop = get_event_loop()
-    app = loop.run_until_complete(init_app(loop, args.config))
-    web.run_app(app, path=args.path, port=args.port)
+    app = loop.run_until_complete(init_app(loop, args.conf))
+    web.run_app(app, path=args.sock, host=args.host, port=args.port)
 
 
 if __name__ == '__main__':

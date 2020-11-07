@@ -9,6 +9,14 @@ async def cleanup(app):
     await app['db'].close()
 
 
+async def create_client(app, loop):
+    config = app['config']['tenders']
+    app['tenders'] = await utils.Client.create(config, loop)
+    if 'archive' in app['config']:
+        config = app['config']['archive']
+        app['archive'] = await utils.Client.create(config, loop)
+
+
 async def init_app(loop, config=None):
     if not config:
         config = 'config/api.yaml'
@@ -18,6 +26,7 @@ async def init_app(loop, config=None):
     ]
     app = web.Application(loop=loop, middlewares=middlewares)
     app['config'] = utils.load_config(config)
+    await create_client(app, loop)
     await backend.init_engine(app)
     app.on_cleanup.append(cleanup)
     await utils.load_keyring(app)
@@ -26,7 +35,7 @@ async def init_app(loop, config=None):
     return app
 
 
-async def init_tables(loop, config, root_key):
+async def init_tables(loop, config, root_key, dropdb=False):
     if not config:
         config = 'config/api.yaml'
     app = utils.FakeApp(loop)
@@ -35,7 +44,7 @@ async def init_tables(loop, config, root_key):
         key = json.loads(fp.read())
     assert key['envelope']['model'] == 'admin/pubkey'
     await backend.init_engine(app)
-    await app['db'].init_tables()
+    await app['db'].init_tables(dropdb)
     await app['db'].put_item(key)
 
 
@@ -62,11 +71,13 @@ async def put_data(signed_json, api_url):
 
 def cdb_init():
     parser = argparse.ArgumentParser()
+    parser.add_argument('--dropdb', action='store_true')
     parser.add_argument('--config')
     parser.add_argument('root_key')
     args = parser.parse_args()
     loop = get_event_loop()
-    loop.run_until_complete(init_tables(loop, args.config, args.root_key))
+    loop.run_until_complete(init_tables(loop, args.config,
+        args.root_key, args.dropdb))
     utils.logger.info("Tables created")
 
 
@@ -81,14 +92,14 @@ def cdb_put():
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--conf')
+    parser.add_argument('--config')
     parser.add_argument('--sock')
     parser.add_argument('--host')
     parser.add_argument('--port', type=int)
     args = parser.parse_args()
 
     loop = get_event_loop()
-    app = loop.run_until_complete(init_app(loop, args.conf))
+    app = loop.run_until_complete(init_app(loop, args.config))
     web.run_app(app, path=args.sock, host=args.host, port=args.port)
 
 

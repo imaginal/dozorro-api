@@ -1,5 +1,7 @@
 import os
 import pytz
+import asyncio
+import aiohttp
 import hashlib
 import ed25519
 import iso8601
@@ -67,19 +69,40 @@ def validate_envelope(data, keyring):
         raise ValidateError('sign not verified') from e
 
 
+async def validate_tender_reference(tender_id, app):
+    client = app['tenders']
+    for n in range(5):
+        try:
+            return await client.get_tender(tender_id)
+        except aiohttp.ClientError as exc:
+            if exc.code // 100 == 4 or n == 4:
+                if 'archive' in app and client != app['archive']:
+                    client = app['archive']
+                    continue
+                raise ValidateError('tender not found')
+            await asyncio.sleep(n + 1)
+
+
+async def validate_contract_reference(reference, app):
+    tender_id, contract_id = reference.split('/', 1)
+    tender = await validate_tender_reference(tender_id, app)
+    assert tender.get('contracts', None), 'tender has no contracts'
+    assert [c for c in tender['contracts'] if c['id'] == contract_id], 'contract not found'
+
+
 async def validate_references(payload, formschema, app):
     for key, value in formschema['properties'].items():
         if 'reference' in value and key in payload:
             if value['reference'] == 'tenders/contracts':
-                continue
-            if value['reference'] == 'tenders':
-                await app['db'].check_exists(payload[key], table='tenders')
+                await validate_contract_reference(payload[key], app)
+            elif value['reference'] == 'tenders':
+                await validate_tender_reference(payload[key], app)
             else:
                 await app['db'].check_exists(payload[key], model=value['reference'])
 
 
 async def validate_schema(envelope, app):
-    model, schema = envelope['model'].split('/')
+    model, schema = envelope['model'].split('/', 1)
     payload = envelope['payload']
     if model not in ('form', 'admin'):
         raise ValidateError('bad model name')
@@ -91,7 +114,3 @@ async def validate_schema(envelope, app):
     formschema = app['schemas'][schema]
     jsonschema.validate(payload, formschema)
     await validate_references(payload, formschema, app)
-
-
-async def validate_comment(envelope, app):
-    await validate_form(envelope, app)

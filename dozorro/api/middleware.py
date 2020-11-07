@@ -33,11 +33,11 @@ async def error_middleware(app, handler):
                 return json_error(e.status, e.reason)
             raise
         except (AssertionError, LookupError, TypeError, ValueError, ValidationError) as e:
-            request_body = await dump_request(request) if request else ''
+            request_body = await dump_request(request)
             logger.exception('ValidateError on {}'.format(request_body))
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:
-            request_body = await dump_request(request) if request else ''
+            request_body = await dump_request(request)
             logger.exception('Unhandled Exception on {}'.format(request_body))
             return json_error(500, 'Unhandled error: {}'.format(e))
     return middleware_handler

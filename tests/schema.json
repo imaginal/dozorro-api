@@ -1,0 +1,223 @@
+{
+  "sign": "6nvKQ0I5XOI9zJ+ERKI8q9a5phIhIDndCvfSuOnNdWrNqyXxTB2reCXdWrrZ8dsSZBEQ67FfD979yo90n0TQDw",
+  "id": "0050645190adf9f756ec91e4778c27ed",
+  "envelope": {
+    "payload": {
+      "schema": {
+        "type": "object",
+        "title": "Simple comment schema",
+        "required": [
+          "author",
+          "comment",
+          "parentForm",
+          "tender"
+        ],
+        "properties": {
+          "update": {
+            "type": "string",
+            "enum": [
+              "form",
+              "comment"
+            ],
+            "description": "Use this to update another comment (or form)"
+          },
+          "tender": {
+            "type": "string",
+            "reference": "tenders",
+            "pattern": "^[0-9a-f]{32}$"
+          },
+          "replyTo": {
+            "type": "string",
+            "reference": "comment",
+            "pattern": "^[0-9a-f]{32}$",
+            "description": "Reference comment id"
+          },
+          "parentForm": {
+            "type": "string",
+            "reference": "form",
+            "pattern": "^[0-9a-f]{32}$",
+            "description": "Reference form id"
+          },
+          "comment": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 10000
+          },
+          "author": {
+            "description": "author schema described in comment model",
+            "$ref": "#/definitions/author"
+          }
+        },
+        "form": [
+          {
+            "type": "textarea",
+            "key": "comment"
+          }
+        ],
+        "description": "Comments submitted to tender forms",
+        "definitions": {
+          "author": {
+            "type": "object",
+            "title": "Autor schema",
+            "required": [
+              "auth"
+            ],
+            "properties": {
+              "procuringEntityRelation": {
+                "type": "string",
+                "enum": [
+                  "commissioner",
+                  "supervisor"
+                ],
+                "description": "Optional only for replies from supervisor"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 300
+              },
+              "identifier": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "scheme"
+                ],
+                "properties": {
+                  "uri": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 250
+                  },
+                  "scheme": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 10
+                  },
+                  "legalName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  }
+                },
+                "description": "Identifier Schema http://api-docs.openprocurement.org/en/latest/standard/organization.html#identifier",
+                "additionalProperties": false
+              },
+              "contactPoint": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "minLength": 4,
+                    "maxLength": 250
+                  },
+                  "telephone": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 300
+                  },
+                  "faxNumber": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "email": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 254
+                  }
+                },
+                "description": "ContactPoint Schema http://api-docs.openprocurement.org/en/latest/standard/organization.html#contactpoint",
+                "additionalProperties": false
+              },
+              "auth": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "scheme"
+                ],
+                "properties": {
+                  "scheme": {
+                    "type": "string",
+                    "enum": [
+                      "internal",
+                      "external"
+                    ],
+                    "description": "Use `internal` for registered orgs, `external` for social auth"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80,
+                    "description": "Provider name for external scheme (google, facebook)"
+                  },
+                  "id": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 130,
+                    "description": "Secure user ID, use HMAC(user.id) for visible and HMAC(user.id:tender.id) for anonymous"
+                  }
+                },
+                "description": "Autor Auth scheme (not schema) and user ID",
+                "additionalProperties": false
+              },
+              "address": {
+                "type": "object",
+                "required": [
+                  "countryName",
+                  "streetAddress"
+                ],
+                "properties": {
+                  "streetAddress": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 250
+                  },
+                  "region": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "postalCode": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 20
+                  },
+                  "locality": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "countryName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  }
+                },
+                "description": "Address Schema http://api-docs.openprocurement.org/en/latest/standard/organization.html#address",
+                "additionalProperties": false
+              }
+            },
+            "description": "Auth and Organization info: address, identifier, contactPoint",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false,
+        "$schema": "http://json-schema.org/schema#"
+      },
+      "model": "form/comment"
+    },
+    "owner": "root",
+    "model": "admin/schema",
+    "date": "2016-11-01T01:00:00.000569+00:00"
+  }
+}

@@ -1,0 +1,29 @@
+version: 1
+disable_existing_loggers: false
+formatters:
+  default:
+    format: '%(asctime)s [%(process)d] [%(levelname)s] %(message)s'
+    datefmt: '[%Y-%m-%d %H:%M:%S %z]'
+  message:
+    format: '%(message)s'
+handlers:
+  stderr:
+    class: logging.StreamHandler
+    level: NOTSET
+    formatter: default
+    stream: ext://sys.stderr
+  stdout:
+    class: logging.StreamHandler
+    level: NOTSET
+    formatter: message
+    stream: ext://sys.stdout
+loggers:
+  aiohttp.access:
+    level: INFO
+    handlers: [stdout]
+    propagate: false
+  dozorro.api:
+    level: DEBUG
+root:
+  level: WARNING
+  handlers: [stderr]

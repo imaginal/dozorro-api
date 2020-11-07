@@ -1,0 +1,19 @@
+{
+  "envelope": {
+    "payload": {
+      "tender": "abcdabcdabcdabcdabcdabcdabcdabcd",
+      "parentForm": "abcdabcdabcdabcdabcdabcdabcdabcd",
+      "comment": "тест Поле обов`язкове до заповнення, та повине мати довжину більше 30 символів",
+      "author": {
+        "auth": {
+          "scheme": "external",
+          "provider": "google",
+          "id": "8345bda619d1aa7ccba81f64ac4d90c4"
+        }
+      }
+    },
+    "owner": "root",
+    "model": "form/comment",
+    "date": "2016-11-01T01:00:00.000569+00:00"
+  }
+}

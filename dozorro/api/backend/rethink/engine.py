@@ -126,7 +126,12 @@ class RethinkEngine(object):
             raise RuntimeError('insert error')
         return True
 
-    async def init_tables(self):
+    async def init_tables(self, drop_database=False):
+        if drop_database:
+            try:
+                await r.db_drop(self.options['db']).run(self.conn)
+            except rethinkdb.errors.ReqlOpFailedError:
+                pass
+        await r.db_create(self.options['db']).run(self.conn)
         await r.table_create('data').run(self.conn)
-        await r.table_create('tenders').run(self.conn)
         await r.table('data').index_create('ts').run(self.conn)

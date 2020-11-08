@@ -159,6 +159,22 @@ async def test_api(test_client, loop):
     text = await resp.text()
     assert 'tender not found' in text
 
+    app['tenders'].params['mode'] = 'test'
+    tender_list = await app['tenders'].get_tenders()
+    test_tender_id = tender_list[-1]['id']
+
+    # tender in mode=test
+    data['envelope']['payload']['tender'] = test_tender_id
+    bson = dump_bson(data)
+    data['id'] = hash_id(bson)
+    data_sign(data, sk)
+    url = PREFIX + '/data/' + data['id']
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'mode=test' in text
+
+    app['tenders'].params['mode'] = ''
     tender_list = await app['tenders'].get_tenders()
     some_tender_id = tender_list[-1]['id']
 

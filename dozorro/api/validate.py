@@ -73,7 +73,8 @@ async def validate_tender_reference(tender_id, app):
     client = app['tenders']
     for n in range(5):
         try:
-            return await client.get_tender(tender_id)
+            tender = await client.get_tender(tender_id)
+            break
         except aiohttp.ClientError as exc:
             if exc.code // 100 == 4 or n == 4:
                 if 'archive' in app and client != app['archive']:
@@ -81,6 +82,10 @@ async def validate_tender_reference(tender_id, app):
                     continue
                 raise ValidateError('tender not found')
             await asyncio.sleep(n + 1)
+    if tender.get('mode', '') == 'test':
+        if not app['config']['tenders'].get('test'):
+            raise ValidateError('reference tender in mode=test')
+    return tender
 
 
 async def validate_contract_reference(reference, app):

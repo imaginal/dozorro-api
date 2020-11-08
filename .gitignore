@@ -20,6 +20,12 @@ parts/
 sdist/
 config/
 private/
+.cache/
+.coverage
+htmlcov/
+log/
+*.log
+tmp/
 *.egg-info/
 .installed.cfg
 *.egg

@@ -1,9 +1,5 @@
-import os
-import sys
 import glob
 import yaml
-import fcntl
-import atexit
 import aiohttp
 import iso8601
 import logging
@@ -83,7 +79,8 @@ async def load_keyring(app):
     keyring = {}
     for fn in glob.glob(path + '/*.json'):
         logger.info('Load pubkey {}'.format(fn))
-        data = json.loads(open(fn, 'rb').read())
+        with open(fn, 'rb') as fp:
+            data = json.loads(fp.read())
         model = data['envelope']['model']
         assert model == 'admin/pubkey', 'bad key model'
         payload = data['envelope']['payload']
@@ -92,8 +89,8 @@ async def load_keyring(app):
         owner = payload['owner']
         if owner not in keyring:
             keyring[owner] = []
-        keyring[owner].append(payload)
         await app['db'].check_exists(data['id'])
+        keyring[owner].append(payload)
     app['keyring'] = keyring
     logger.info('Loaded {} keys'.format(len(keyring)))
 
@@ -104,12 +101,14 @@ async def load_schemas(app):
     comment = {}
     for fn in glob.glob(path + '/comment.json'):
         logger.info('Load comment {}'.format(fn))
-        root = json.loads(open(fn, 'rb').read())
+        with open(fn, 'rb') as fp:
+            root = json.loads(fp.read())
         payload = root['envelope']['payload']
         comment = payload['schema']
     for fn in glob.glob(path + '/*.json'):
         logger.info('Load schema {}'.format(fn))
-        root = json.loads(open(fn, 'rb').read())
+        with open(fn, 'rb') as fp:
+            root = json.loads(fp.read())
         model = root['envelope']['model']
         assert model == 'admin/schema', 'bad schema model'
         payload = root['envelope']['payload']
@@ -117,8 +116,8 @@ async def load_schemas(app):
         if 'definitions' not in data:
             data['definitions'] = comment['definitions']
         model, schema = payload['model'].split('/')
-        schemas[schema] = data
         await app['db'].check_exists(root['id'])
+        schemas[schema] = data
     app['schemas'] = schemas
     logger.info('Loaded {} schemas'.format(len(schemas)))
 
@@ -132,51 +131,3 @@ def load_config(filename, app=None, configure_logging=True):
         logging.config.dictConfig(logconf)
     logger.info('Load config from {}'.format(filename))
     return config
-
-
-def daemonize(logfile, chdir=None):
-    if os.fork() > 0:
-        sys.exit(0)
-
-    if chdir:
-        os.chdir(chdir)
-    os.setsid()
-
-    if os.fork() > 0:
-        sys.exit(0)
-
-    if not logfile:
-        logfile = '/dev/null'
-
-    fout = open(logfile, 'ba+')
-    ferr = open(logfile, 'ba+', 0)
-    sys.stdin.close(), os.close(0)
-    os.dup2(fout.fileno(), 1)
-    os.dup2(ferr.fileno(), 2)
-
-
-def remove_pidfile(lock_file, filename, mypid):
-    if mypid != os.getpid():
-        return
-    lock_file.seek(0)
-    if mypid != int(lock_file.read() or 0):
-        return
-    logger.info("Remove pidfile %s", filename)
-    fcntl.lockf(lock_file, fcntl.LOCK_UN)
-    lock_file.close()
-    os.remove(filename)
-
-
-def write_pidfile(filename):
-    if not filename:
-        return
-    # try get exclusive lock to prevent second start
-    mypid = os.getpid()
-    logger.info("Save %d to pidfile %s", mypid, filename)
-    lock_file = open(filename, "a+")
-    fcntl.lockf(lock_file, fcntl.LOCK_EX + fcntl.LOCK_NB)
-    lock_file.truncate()
-    lock_file.write(str(mypid) + "\n")
-    lock_file.flush()
-    atexit.register(remove_pidfile, lock_file, filename, mypid)
-    return lock_file

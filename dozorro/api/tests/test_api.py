@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 import json
 import pytz
@@ -8,6 +9,7 @@ from datetime import datetime
 from unittest.mock import patch
 from dozorro.api.main import cdb_init, init_app, cleanup
 from dozorro.api.validate import dumps, hash_id
+from dozorro.api.utils import load_schemas
 
 
 CONFIG = "tests/api.yaml"
@@ -15,6 +17,7 @@ ROOTJS = "tests/keyring/root.json"
 SECKEY = "tests/keypair.pem"
 SCHEMA = "tests/comment_schema.json"
 SAMPLE = "tests/comment_sample.json"
+TMPDIR = "tests/temp"
 PREFIX = "/api/v1"
 TZ = pytz.timezone('Europe/Kiev')
 
@@ -116,12 +119,14 @@ async def test_api(test_client, loop):
     comment_schema = data
 
     # append schema to app[schemas]
-    model = comment_schema['envelope']['model']
-    assert model == 'admin/schema', 'bad schema model'
-    payload = comment_schema['envelope']['payload']
-    model, schema = payload['model'].split('/')
-    data = payload['schema']
-    app['schemas'][schema] = data
+    tmpdir = TMPDIR
+    os.makedirs(tmpdir, exist_ok=True)
+    filename = tmpdir + '/comment.json'
+    with open(filename, 'wt') as fp:
+        json.dump(comment_schema, fp, ensure_ascii=False, indent=2)
+    app['config']['schemas'] = tmpdir
+    await load_schemas(app)
+    os.remove(filename)
 
     # send sample comment
     with open(SAMPLE) as fp:

@@ -40,7 +40,7 @@ class RethinkEngine(object):
     async def keep_alive(self, app):
         while app.loop.is_running():
             try:
-                await asyncio.sleep(10)
+                await asyncio.sleep(1)
                 await self.check_open()
             except asyncio.CancelledError:
                 break

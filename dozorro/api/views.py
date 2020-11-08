@@ -1,6 +1,6 @@
 import re
 from rapidjson import loads, dumps
-from aiohttp.web import HTTPNotFound, View, json_response
+from aiohttp.web import HTTPNotFound, HTTPMethodNotAllowed, View, json_response
 from .validate import ValidateError, validate_envelope, validate_schema
 
 HEX_LIST = re.compile(r'^[0-9a-f,]{32,3300}$')
@@ -54,6 +54,8 @@ class ItemView(View):
         return json_response(resp, headers=headers, dumps=dumps)
 
     async def put(self):
+        if self.request.app['config'].get('readonly'):
+            raise HTTPMethodNotAllowed(self.request.method, ['GET'])
         item_id = self.request.match_info['item_id']
         ct = self.request.headers.get('Content-Type')
         ua = self.request.headers.get('User-Agent')

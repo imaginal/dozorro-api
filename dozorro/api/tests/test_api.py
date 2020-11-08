@@ -65,8 +65,19 @@ async def test_api(test_client, loop):
     # send comment schema (outdated)
     with open(SCHEMA) as fp:
         data = json.load(fp)
+
     url = PREFIX + '/data/' + data['id']
     ua = {'User-Agent': 'test root'}
+
+    # first test readony mode
+    app['config']['readonly'] = True
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 405
+    text = await resp.text()
+    assert 'Method Not Allowed' in text
+
+    # back to read-write app
+    app['config'].pop('readonly')
     resp = await client.put(url, json=data, headers=ua)
     assert resp.status == 400
     text = await resp.text()

@@ -69,6 +69,15 @@ class Client(object):
         return data['data']
 
 
+async def create_client(app, loop):
+    if 'tenders' in app['config']:
+        config = app['config']['tenders']
+        app['tenders'] = await Client.create(config, loop)
+    if 'archive' in app['config']:
+        config = app['config']['archive']
+        app['archive'] = await Client.create(config, loop)
+
+
 async def load_keyring(app):
     path = app['config']['keyring']
     keyring = {}

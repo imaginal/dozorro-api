@@ -14,15 +14,6 @@ async def cleanup(app):
         await app['archive'].close()
 
 
-async def create_client(app, loop):
-    if 'tenders' in app['config']:
-        config = app['config']['tenders']
-        app['tenders'] = await utils.Client.create(config, loop)
-    if 'archive' in app['config']:
-        config = app['config']['archive']
-        app['archive'] = await utils.Client.create(config, loop)
-
-
 async def init_app(loop, config):
     middlewares = [
         backend.database_middleware,
@@ -30,11 +21,12 @@ async def init_app(loop, config):
     ]
     app = web.Application(loop=loop, middlewares=middlewares)
     app['config'] = utils.load_config(config)
-    await create_client(app, loop)
     await backend.init_engine(app)
     app.on_cleanup.append(cleanup)
-    await utils.load_keyring(app)
-    await utils.load_schemas(app)
+    if not app['config'].get('readonly'):
+        await utils.create_client(app, loop)
+        await utils.load_keyring(app)
+        await utils.load_schemas(app)
     views.setup_routes(app)
     return app
 

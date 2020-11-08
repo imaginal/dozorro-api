@@ -6,7 +6,12 @@ from . import backend, middleware, utils, views
 
 
 async def cleanup(app):
-    await app['db'].close()
+    if 'db' in app:
+        await app['db'].close()
+    if 'tenders' in app:
+        await app['tenders'].close()
+    if 'archive' in app:
+        await app['archive'].close()
 
 
 async def create_client(app, loop):
@@ -17,9 +22,7 @@ async def create_client(app, loop):
         app['archive'] = await utils.Client.create(config, loop)
 
 
-async def init_app(loop, config=None):
-    if not config:
-        config = 'config/api.yaml'
+async def init_app(loop, config):
     middlewares = [
         backend.database_middleware,
         middleware.error_middleware
@@ -36,8 +39,6 @@ async def init_app(loop, config=None):
 
 
 async def init_tables(loop, config, root_key, dropdb=False):
-    if not config:
-        config = 'config/api.yaml'
     app = utils.FakeApp(loop)
     app['config'] = utils.load_config(config)
     with open(root_key) as fp:

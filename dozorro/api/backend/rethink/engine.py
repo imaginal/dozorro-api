@@ -15,15 +15,17 @@ class RethinkEngine(object):
         self.read_mode = self.options.pop('read_mode', 'single')
         keep_alive = self.options.pop('keep_alive', False)
         self.conn = await r.connect(**self.options)
+        self.keep_alive_task = None
         if keep_alive:
-            self.task = app.loop.create_task(self.keep_alive(app))
+            coro = self.keep_alive(app)
+            self.keep_alive_task = app.loop.create_task(coro)
         app['db'] = self
 
     async def close(self):
-        if self.task:
-            self.task.cancel()
-            await self.task
-            self.task = None
+        if self.keep_alive_task:
+            self.keep_alive_task.cancel()
+            await self.keep_alive_task
+            self.keep_alive_task = None
         if self.conn:
             await self.conn.close()
             self.conn = None

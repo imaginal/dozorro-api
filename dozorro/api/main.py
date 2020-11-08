@@ -15,8 +15,9 @@ async def cleanup(app):
 
 
 async def create_client(app, loop):
-    config = app['config']['tenders']
-    app['tenders'] = await utils.Client.create(config, loop)
+    if 'tenders' in app['config']:
+        config = app['config']['tenders']
+        app['tenders'] = await utils.Client.create(config, loop)
     if 'archive' in app['config']:
         config = app['config']['archive']
         app['archive'] = await utils.Client.create(config, loop)

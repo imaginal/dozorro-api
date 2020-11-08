@@ -13,8 +13,8 @@ from dozorro.api.validate import dumps, hash_id
 CONFIG = "tests/api.yaml"
 ROOTJS = "tests/keyring/root.json"
 SECKEY = "tests/keypair.pem"
-SCHEMA = "tests/schema.json"
-SAMPLE = "tests/sample.json"
+SCHEMA = "tests/comment_schema.json"
+SAMPLE = "tests/comment_sample.json"
 PREFIX = "/api/v1"
 TZ = pytz.timezone('Europe/Kiev')
 
@@ -88,13 +88,13 @@ async def test_api(test_client, loop):
 
     # sign comment schema
     with open(ROOTJS) as fp:
-        root = json.load(fp)
+        root_key = json.load(fp)
     with open(SECKEY) as fp:
         keydata = fp.read().encode()
     sk = ed25519.SigningKey(keydata, encoding="base64")
     vk = sk.get_verifying_key()
     vk_s = vk.to_ascii(encoding='hex').decode()
-    assert root['envelope']['payload']['publicKey'] == vk_s
+    assert root_key['envelope']['payload']['publicKey'] == vk_s
 
     data_sign(data, sk)
 
@@ -127,6 +127,7 @@ async def test_api(test_client, loop):
     text = await resp.text()
     assert 'required property' in text
 
+    # some non existing tender
     data['envelope']['payload']['tender'] = "00000000000000000000000000000000"
     bson = dump_bson(data)
     data['id'] = hash_id(bson)
@@ -147,8 +148,11 @@ async def test_api(test_client, loop):
     text = await resp.text()
     assert 'tender not found' in text
 
-    # example tender
-    data['envelope']['payload']['tender'] = "00b4213b5b8042f78def99582b17a0c6"
+    tender_list = await app['tenders'].get_tenders()
+    some_tender_id = tender_list[-1]['id']
+
+    # some existing tender
+    data['envelope']['payload']['tender'] = some_tender_id
     bson = dump_bson(data)
     data['id'] = hash_id(bson)
     data_sign(data, sk)
@@ -160,13 +164,68 @@ async def test_api(test_client, loop):
 
     comment_sample = data
 
+    # put existing twice
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'already exists' in text
+
+    # put existing twice with nosave option
+    url += '?nosave=1'
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 200
+    text = await resp.text()
+    assert 'validated' in text
+
     url = PREFIX + '/data'
     resp = await client.get(url)
     assert resp.status == 200
     data = await resp.json()
     assert set(data.keys()) == set(['data', 'prev_page', 'next_page'])
-    assert data['data'][0]['id'] == root['id']
+    assert data['data'][0]['id'] == root_key['id']
     assert data['data'][1]['id'] == comment_schema['id']
     assert data['data'][2]['id'] == comment_sample['id']
+
+    next_page_offset = data['next_page']['offset']
+
+    url = PREFIX + '/data?offset=' + next_page_offset
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert len(data['data']) == 0
+
+    url = PREFIX + '/data?reverse=1&offset=' + next_page_offset
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert len(data['data']) != 0
+
+    url = PREFIX + '/data/' + root_key['id']
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert data['data'][0]['envelope']['payload']['publicKey'] == \
+        root_key['envelope']['payload']['publicKey']
+
+    url = PREFIX + '/data/' + comment_schema['id']
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert data['data'][0]['envelope']['payload']['schema']['title'] == \
+        comment_schema['envelope']['payload']['schema']['title']
+
+    url = PREFIX + '/data/' + comment_sample['id']
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert data['data'][0]['envelope']['payload']['comment'] == \
+        comment_sample['envelope']['payload']['comment']
+
+    url = "{}/data/{},{}".format(PREFIX, comment_sample['id'],
+        comment_schema['id'])
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert len(data['data']) == 2
 
     await cleanup(app)

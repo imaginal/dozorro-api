@@ -9,12 +9,18 @@ logger = logging.getLogger(__name__)
 async def dump_request(request):
     request_headers = "\n".join(["{}: {}".format(k, v)
         for k, v in request.headers.items()])
-    request_body = await request.text()
-    return "{} {}\n{}\n\n{}\n\n".format(
-            request.method,
-            request.raw_path,
-            request_headers,
-            request_body)
+    if hasattr(request, 'raw_body_data'):
+        request_body = request.raw_body_data
+    else:
+        request_body = await request.text()
+    if hasattr(request_body, 'decode'):
+        request_body = request_body.decode('utf-8')
+    if request_body:
+        request_body = "\n{}\n\n".format(request_body)
+    return "{} {}\n{}\n{}".format(request.method,
+                                  request.raw_path,
+                                  request_headers,
+                                  request_body)
 
 
 def json_error(status, message):
@@ -33,11 +39,11 @@ async def error_middleware(app, handler):
                 return json_error(e.status, e.reason)
             raise
         except (AssertionError, LookupError, TypeError, ValueError, ValidationError) as e:
-            request_body = await dump_request(request)
-            logger.exception('ValidateError on {}'.format(request_body))
+            request_dump = await dump_request(request)
+            logger.exception('ValidateError on {}'.format(request_dump))
             return json_error(400, '{}: {}'.format(e.__class__.__name__, e))
         except Exception as e:
-            request_body = await dump_request(request)
-            logger.exception('Unhandled Exception on {}'.format(request_body))
+            request_dump = await dump_request(request)
+            logger.exception('Unhandled Exception on {}'.format(request_dump))
             return json_error(500, 'Unhandled error: {}'.format(e))
     return middleware_handler

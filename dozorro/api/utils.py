@@ -123,6 +123,8 @@ async def load_schemas(app):
 
 
 def load_config(filename, app=None, configure_logging=True):
+    if not filename:
+        raise ValueError('Config file not set')
     with open(filename) as fp:
         config = yaml.safe_load(fp)
     if 'logging' in config and configure_logging:

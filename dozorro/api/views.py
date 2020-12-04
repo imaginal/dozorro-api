@@ -14,7 +14,7 @@ class ListView(View):
         return {'offset': offset}
 
     async def get(self):
-        args = self.request.GET
+        args = self.request.query
         offset = args.get('offset', None)
         limit = int(args.get('limit', None) or 100)
         reverse = bool(args.get('reverse', 0))
@@ -75,7 +75,7 @@ class ItemView(View):
         if ua and ua.find(data['envelope']['owner']) < 0:
             raise ValidateError('User-Agent must include owner')
 
-        if self.request.GET.get('nosave', False):
+        if self.request.query.get('nosave', False):
             resp = {'validated': 1, 'created': 0}
             return json_response(resp, dumps=dumps)
 

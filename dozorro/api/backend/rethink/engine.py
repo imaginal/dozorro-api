@@ -1,8 +1,8 @@
 import asyncio
-import struct
-import rethinkdb as r
-import rethinkdb.errors
 import logging
+import struct
+from rethinkdb import r
+import rethinkdb.errors
 
 logger = logging.getLogger(__name__)
 

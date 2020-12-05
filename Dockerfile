@@ -12,10 +12,10 @@ RUN pip install -U pip setuptools wheel \
  && pip install -r /tmp/requirements.txt \
  && pip install /tmp/dozorro.api-*
 
-RUN chmod -R o-rwx /bin /sbin /usr/bin /usr/sbin \
- && apt-get autoremove --purge -yq cpp g++ gcc m4 make \
- && rm -rf /var/lib/apt/lists /var/cache/apt/archives /tmp
+RUN apt-get autoremove --purge -yq cpp g++ gcc m4 make \
+ && chmod -R o-rwx /bin /sbin /usr/bin /usr/sbin \
+ && rm -rf /var/lib/apt/list /var/cache/apt /tmp
 
 USER www-data
 
-CMD ["/usr/local/bin/gunicorn", "-c", "/etc/dozorro/web.conf", "dozorro.api.wsgi:app"]
+CMD ["/usr/local/bin/gunicorn", "-c", "/etc/dozorro/web.py", "dozorro.api.wsgi:app"]

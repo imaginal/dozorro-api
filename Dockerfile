@@ -1,21 +1,13 @@
-FROM python:3.8
+FROM alpine
+
+COPY dist /dist/
 
 ENV TZ=Europe/Kiev
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \
- && echo LANG="en_US.UTF-8" >/etc/default/locale \
+ENV LANG=en_US.UTF-8
+
+RUN apk add --no-cache tzdata python3 py3-pip py3-wheel libffi \
+ && cp /usr/share/zoneinfo/$TZ /etc/localtime \
  && echo $TZ >/etc/timezone \
- && update-ca-certificates
+ && pip3 install --no-index -f /dist dozorro.api gunicorn
 
-COPY requirements.txt dist/dozorro.api-* /tmp/
-
-RUN pip install -U pip setuptools wheel \
- && pip install -r /tmp/requirements.txt \
- && pip install /tmp/dozorro.api-*
-
-RUN apt-get autoremove --purge -yq cpp g++ gcc m4 make \
- && chmod -R o-rwx /bin /sbin /usr/bin /usr/sbin \
- && rm -rf /var/lib/apt/list /var/cache/apt /tmp
-
-USER www-data
-
-CMD ["/usr/local/bin/gunicorn", "-c", "/etc/dozorro/web.py", "dozorro.api.wsgi:app"]
+RUN apk del --no-cache alpine-baselayout busybox ssl_client apk-tools

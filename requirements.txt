@@ -1,12 +1,17 @@
 aiodns==2.0.0
 aiohttp==3.7.3
 async-timeout==3.0.1
+attrs==20.3.0
+cchardet==2.1.7
+cffi==1.14.4
 ed25519==1.5
 gunicorn==20.0.4
+idna==2.10
 iso8601==0.1.13
 jsonschema==3.2.0
 python-rapidjson==0.9.4
 PyYAML==5.3.1
 rethinkdb==2.4.7
+six==1.15.0
 yarl==1.6.3
 pytz

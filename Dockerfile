@@ -10,4 +10,5 @@ RUN apk add --no-cache tzdata python3 py3-pip py3-wheel libffi \
  && echo $TZ >/etc/timezone \
  && pip3 install --no-index -f /dist dozorro.api gunicorn
 
-RUN apk del --no-cache alpine-baselayout busybox ssl_client apk-tools
+RUN rm -rf /dist /var/cache/apk \
+ && apk del --no-cache alpine-baselayout busybox ssl_client apk-tools

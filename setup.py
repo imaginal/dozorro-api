@@ -1,11 +1,18 @@
 from setuptools import setup, find_packages
 
-version = "0.4b4"
+version = "0.4b5"
 
 requires = [
     "aiohttp",
     "aiodns",
     "cchardet",
+    "ed25519",
+    "iso8601",
+    "jsonschema",
+    "python-rapidjson",
+    "PyYAML",
+    "rethinkdb",
+    "pytz"
 ]
 
 entry_points = {

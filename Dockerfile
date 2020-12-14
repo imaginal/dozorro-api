@@ -16,4 +16,6 @@ RUN rm -rf /dist /var/cache/apk \
  && chmod 711 /usr/bin && chmod 755 /usr/bin/python3 /usr/bin/gunicorn \
  && apk del --no-cache alpine-baselayout busybox ssl_client apk-tools
 
+USER 33:33
+
 CMD ["/usr/bin/gunicorn", "-c", "/etc/dozorro/web.py", "dozorro.api.wsgi:app"]

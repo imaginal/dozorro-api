@@ -88,8 +88,7 @@ async def validate_tender_reference(tender_id, app):
     return tender
 
 
-async def validate_contract_reference(reference, app):
-    tender_id, contract_id = reference.split('/', 1)
+async def validate_contract_reference(contract_id, tender_id, app):
     tender = await validate_tender_reference(tender_id, app)
     assert tender.get('contracts', None), 'tender has no contracts'
     assert [c for c in tender['contracts'] if c['id'] == contract_id], 'contract not found'
@@ -99,7 +98,7 @@ async def validate_references(payload, formschema, app):
     for key, value in formschema['properties'].items():
         if 'reference' in value and key in payload:
             if value['reference'] == 'tenders/contracts':
-                await validate_contract_reference(payload[key], app)
+                await validate_contract_reference(payload[key], payload['tender'], app)
             elif value['reference'] == 'tenders':
                 await validate_tender_reference(payload[key], app)
             else:

@@ -1,0 +1,44 @@
+{
+  "envelope": {
+    "date": "2020-12-14T12:51:20.111982+02:00",
+    "model": "form/tender113",
+    "payload": {
+      "tender": "9e5cdb75f3374ab3b3d668337e61582c",
+      "formData": {
+        "supplierInteractionProblems": [
+          "contractRefusal",
+          "other",
+          "shortSupply"
+        ],
+        "supplierDutiesExecution": "1",
+        "supplierDutiesExecutionComment": "Закупили талони . але на жодній заправці України їх не можна використати."
+      },
+      "tenderContract": "98a9a6b77572450582244e0580d02d07",
+      "author": {
+        "name": "Соколівська сільська рада",
+        "auth": {
+          "scheme": "internal",
+          "id": "bf6806c473bec4210699fc90662b868c"
+        },
+        "address": {
+          "countryName": "Україна",
+          "postalCode": "27641",
+          "streetAddress": "вул. ШЕВЧЕНКА, 23",
+          "region": "Кіровоградська область",
+          "locality": "с. Соколівське"
+        },
+        "contactPoint": {
+          "telephone": "+380669631234",
+          "email": "kolsrjs@gmail.com",
+          "name": "Ганна Вітряна"
+        },
+        "identifier": {
+          "scheme": "UA-EDR",
+          "id": "12364905",
+          "legalName": "Нечепурівська сільська рада"
+        }
+      }
+    },
+    "owner": "root"
+  }
+}

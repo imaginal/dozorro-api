@@ -1,0 +1,160 @@
+{
+  "envelope": {
+    "date": "2016-11-01T08:00:00.113043+03:00",
+    "model": "admin/schema",
+    "owner": "root",
+    "payload": {
+      "model": "form/tender113",
+      "schema": {
+        "$schema": "http://json-schema.org/schema#",
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "$ref": "#/definitions/author",
+            "description": "author schema described in comment model"
+          },
+          "formData": {
+            "additionalProperties": false,
+            "form": [
+              {
+                "title": "Evaluation of how was the contract executed by the economic operator",
+                "title_ru": "Оценка выполнения поставщиком условий договора про закупку ( для заказчиков)",
+                "title_uk": "Оцінка виконання постачальником умов договору про закупівлю (для замовника)",
+                "type": "title"
+              },
+              {
+                "items": [
+                  {
+                    "inline": true,
+                    "key": "supplierDutiesExecution",
+                    "title": "Evaluate the perfomance of it’s duties by the economic operator",
+                    "title_ru": "Оцените качество исполнения поставщиком своих обязательств",
+                    "title_uk": "Оцініть якість виконання постачальником своїх обов’язків",
+                    "type": "radios"
+                  },
+                  {
+                    "key": "supplierDutiesExecutionComment",
+                    "title": "Your commentary",
+                    "title_ru": "Ваш комментарий",
+                    "title_uk": "Ваш коментар",
+                    "type": "textarea"
+                  }
+                ],
+                "type": "fieldset"
+              },
+              {
+                "items": [
+                  {
+                    "key": "supplierInteractionProblems",
+                    "title": "Which problems occurred during the cooperation with the economic operator",
+                    "titleMap": {
+                      "contractRefusal": "Refusing to execute the contract",
+                      "improperQuality": "Bad quality of the delivered goods",
+                      "other": "Other",
+                      "priceChange": "Change of the price",
+                      "qualificationDisparity": "Unfit for the qualification demands, set in the tender",
+                      "shortSupply": "Not a complete delivery",
+                      "termsFailure": "Messing the deadlines"
+                    },
+                    "titleMap_ru": {
+                      "contractRefusal": "Отказ исполнять условия контракта",
+                      "improperQuality": "Поставка товара ненадлежащего качества",
+                      "other": "Другое",
+                      "priceChange": "Изменение цены",
+                      "qualificationDisparity": "Несоответствие квалификацонным критериям, выявленное во время исполнения контракта",
+                      "shortSupply": "Недопоставка",
+                      "termsFailure": "Несоблюдение сроков"
+                    },
+                    "titleMap_uk": {
+                      "contractRefusal": "Відмова від виконання умов контракту",
+                      "improperQuality": "Поставка товару неналежної якості",
+                      "other": "Інше",
+                      "priceChange": "Зміна ціни",
+                      "qualificationDisparity": "Невідповідність кваліфікаційним критеріям, що було виявлено під час виконання контракту",
+                      "shortSupply": "Недопоставка",
+                      "termsFailure": "Недотримання строків"
+                    },
+                    "title_ru": "Какие именно проблемы возникли при взаимодействии с поставщиком (выберите один или несколько вариантов)",
+                    "title_uk": "Які саме проблеми виникли у взаємодії з постачальником (оберіть один або декілька варіантів):",
+                    "type": "checkboxes"
+                  },
+                  {
+                    "key": "supplierInteractionProblemsComment",
+                    "title": "Your commentary",
+                    "title_ru": "Ваш комментарий",
+                    "title_uk": "Ваш коментар",
+                    "type": "textarea"
+                  }
+                ],
+                "type": "fieldset"
+              }
+            ],
+            "properties": {
+              "supplierDutiesExecution": {
+                "enum": [
+                  "1",
+                  "2",
+                  "3",
+                  "4",
+                  "5"
+                ],
+                "type": "string"
+              },
+              "supplierDutiesExecutionComment": {
+                "maxLength": 10000,
+                "minLength": 1,
+                "type": "string"
+              },
+              "supplierInteractionProblems": {
+                "items": {
+                  "enum": [
+                    "termsFailure",
+                    "improperQuality",
+                    "shortSupply",
+                    "contractRefusal",
+                    "priceChange",
+                    "qualificationDisparity",
+                    "other"
+                  ],
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "supplierInteractionProblemsComment": {
+                "maxLength": 10000,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "supplierDutiesExecution"
+            ],
+            "type": "object"
+          },
+          "tender": {
+            "pattern": "^[0-9a-f]{32}$",
+            "reference": "tenders",
+            "type": "string"
+          },
+          "tenderContract": {
+            "pattern": "^[0-9a-f]{32}$",
+            "reference": "tenders/contracts",
+            "type": "string"
+          }
+        },
+        "required": [
+          "author",
+          "formData",
+          "tender",
+          "tenderContract"
+        ],
+        "title": "Supplier contract execution tender113",
+        "type": "object"
+      }
+    }
+  },
+  "id": "0034583111989d41aa7b3faa59ebd948",
+  "sign": "QiXOkY+g8oRV84IKTyF/TTHm7RGm8NM0Nn4jSMVROJFJ+eFJKhfWXlZkM2qfj6Sg9Ft+MS66aOIcdzFy3UeJBQ"
+}

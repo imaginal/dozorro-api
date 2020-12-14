@@ -15,8 +15,10 @@ from dozorro.api.utils import load_schemas
 CONFIG = "tests/api.yaml"
 ROOTJS = "tests/keyring/root.json"
 SECKEY = "tests/keypair.pem"
-SCHEMA = "tests/comment_schema.json"
-SAMPLE = "tests/comment_sample.json"
+COMMENT_SCHEMA = "tests/comment_schema.json"
+COMMENT_SAMPLE = "tests/comment_sample.json"
+FORM113_SCHEMA = "tests/form113_schema.json"
+FORM113_SAMPLE = "tests/form113_sample.json"
 TMPDIR = "tests/temp"
 PREFIX = "/api/v1"
 TZ = pytz.timezone('Europe/Kiev')
@@ -38,6 +40,21 @@ def data_sign(data, sk):
     data_bin = dump_bson(data)
     data['id'] = hash_id(data_bin)
     data['sign'] = sk.sign(data_bin, encoding='base64').decode()
+
+
+async def find_tender_contract(app):
+    for n in range(50):
+        await asyncio.sleep(0.1)
+        tenders_list = await app['tenders'].get_tenders()
+        if n < 10:
+            continue
+        for tender in tenders_list:
+            await asyncio.sleep(0.1)
+            tender_data = await app['tenders'].get_tender(tender['id'])
+            if tender_data.get('contracts'):
+                return tender_data['id'], tender_data['contracts'][0]['id']
+
+    assert False, "Contract not found"
 
 
 def test_create_cdb():
@@ -66,7 +83,7 @@ async def test_api(test_client, loop):
     client = await test_client(app)
 
     # send comment schema (outdated)
-    with open(SCHEMA) as fp:
+    with open(COMMENT_SCHEMA) as fp:
         data = json.load(fp)
 
     url = PREFIX + '/data/' + data['id']
@@ -118,18 +135,39 @@ async def test_api(test_client, loop):
     assert 'created' in text
     comment_schema = data
 
-    # append schema to app[schemas]
+    # send tender113 schema
+    with open(FORM113_SCHEMA) as fp:
+        data = json.load(fp)
+
+    data['envelope']['date'] = get_now().isoformat()
+    bson = dump_bson(data)
+    data['id'] = hash_id(bson)
+    url = PREFIX + '/data/' + data['id']
+
+    data_sign(data, sk)
+
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 201
+    text = await resp.text()
+    assert 'created' in text
+    form113_schema = data
+
+    # append 2 schemas to app[schemas]
     tmpdir = TMPDIR
     os.makedirs(tmpdir, exist_ok=True)
-    filename = tmpdir + '/comment.json'
-    with open(filename, 'wt') as fp:
+    cs_filename = tmpdir + '/comment.json'
+    with open(cs_filename, 'wt') as fp:
         json.dump(comment_schema, fp, ensure_ascii=False, indent=2)
+    fs_filename = tmpdir + '/form113.json'
+    with open(fs_filename, 'wt') as fp:
+        json.dump(form113_schema, fp, ensure_ascii=False, indent=2)
     app['config']['schemas'] = tmpdir
     await load_schemas(app)
-    os.remove(filename)
+    os.remove(cs_filename)
+    os.remove(fs_filename)
 
     # send sample comment
-    with open(SAMPLE) as fp:
+    with open(COMMENT_SAMPLE) as fp:
         data = json.load(fp)
     data['envelope']['date'] = get_now().isoformat()
     data['envelope']['payload'].pop('tender', None)
@@ -165,8 +203,8 @@ async def test_api(test_client, loop):
     assert 'tender not found' in text
 
     app['tenders'].params['mode'] = 'test'
-    tender_list = await app['tenders'].get_tenders()
-    test_tender_id = tender_list[-1]['id']
+    tenders_list = await app['tenders'].get_tenders()
+    test_tender_id = tenders_list[-1]['id']
 
     # tender in mode=test
     data['envelope']['payload']['tender'] = test_tender_id
@@ -180,8 +218,8 @@ async def test_api(test_client, loop):
     assert 'mode=test' in text
 
     app['tenders'].params['mode'] = ''
-    tender_list = await app['tenders'].get_tenders()
-    some_tender_id = tender_list[-1]['id']
+    tenders_list = await app['tenders'].get_tenders()
+    some_tender_id = tenders_list[-1]['id']
 
     # some existing tender
     data['envelope']['payload']['tender'] = some_tender_id
@@ -209,6 +247,51 @@ async def test_api(test_client, loop):
     text = await resp.text()
     assert 'validated' in text
 
+    # put form113 with bad contract reference
+    with open(FORM113_SAMPLE) as fp:
+        data = json.load(fp)
+    data['envelope']['date'] = get_now().isoformat()
+    data['envelope']['payload']['tender'] = "00000000000000000000000000000000"
+    data['envelope']['payload']['tenderContract'] = "00000000000000000000000000000000"
+
+    bson = dump_bson(data)
+    data['id'] = hash_id(bson)
+    data_sign(data, sk)
+
+    url = PREFIX + '/data/' + data['id']
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'tender not found' in text
+
+    tender_id, contract_id = await find_tender_contract(app)
+
+    # fix only tender reference
+    data['envelope']['payload']['tender'] = tender_id
+    bson = dump_bson(data)
+    data['id'] = hash_id(bson)
+    data_sign(data, sk)
+
+    url = PREFIX + '/data/' + data['id']
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'contract not found' in text
+
+    # fix contract reference
+    data['envelope']['payload']['tenderContract'] = contract_id
+    bson = dump_bson(data)
+    data['id'] = hash_id(bson)
+    data_sign(data, sk)
+
+    url = PREFIX + '/data/' + data['id']
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 201
+    text = await resp.text()
+    assert 'created' in text
+
+    form113_sample = data
+
     url = PREFIX + '/data'
     resp = await client.get(url)
     assert resp.status == 200
@@ -216,7 +299,9 @@ async def test_api(test_client, loop):
     assert set(data.keys()) == set(['data', 'prev_page', 'next_page'])
     assert data['data'][0]['id'] == root_key['id']
     assert data['data'][1]['id'] == comment_schema['id']
-    assert data['data'][2]['id'] == comment_sample['id']
+    assert data['data'][2]['id'] == form113_schema['id']
+    assert data['data'][3]['id'] == comment_sample['id']
+    assert data['data'][4]['id'] == form113_sample['id']
 
     next_page_offset = data['next_page']['offset']
 

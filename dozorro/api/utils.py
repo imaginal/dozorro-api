@@ -125,11 +125,12 @@ async def load_schemas(app):
 def load_config(filename, app=None, configure_logging=True):
     if not filename:
         raise ValueError('Config file not set')
-    logger.info('Load config from {}'.format(filename))
     with open(filename) as fp:
         config = yaml.safe_load(fp)
     if 'logging' in config and configure_logging:
         with open(config['logging']) as fp:
             logconf = yaml.safe_load(fp)
         logging.config.dictConfig(logconf)
+    # log only after logging system initialized
+    logger.info('Load config from {}'.format(filename))
     return config

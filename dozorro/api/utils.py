@@ -78,7 +78,7 @@ async def load_keyring(app):
     path = app['config']['keyring']
     keyring = {}
     for fn in glob.glob(path + '/*.json'):
-        logger.info('Load pubkey {}'.format(fn))
+        logger.debug('Load pubkey {}'.format(fn))
         with open(fn, 'rb') as fp:
             data = json.loads(fp.read())
         model = data['envelope']['model']
@@ -100,13 +100,13 @@ async def load_schemas(app):
     schemas = {}
     comment = {}
     for fn in glob.glob(path + '/comment.json'):
-        logger.info('Load comment {}'.format(fn))
+        logger.debug('Load comment {}'.format(fn))
         with open(fn, 'rb') as fp:
             root = json.loads(fp.read())
         payload = root['envelope']['payload']
         comment = payload['schema']
     for fn in glob.glob(path + '/*.json'):
-        logger.info('Load schema {}'.format(fn))
+        logger.debug('Load schema {}'.format(fn))
         with open(fn, 'rb') as fp:
             root = json.loads(fp.read())
         model = root['envelope']['model']
@@ -125,11 +125,11 @@ async def load_schemas(app):
 def load_config(filename, app=None, configure_logging=True):
     if not filename:
         raise ValueError('Config file not set')
+    logger.info('Load config from {}'.format(filename))
     with open(filename) as fp:
         config = yaml.safe_load(fp)
     if 'logging' in config and configure_logging:
         with open(config['logging']) as fp:
             logconf = yaml.safe_load(fp)
         logging.config.dictConfig(logconf)
-    logger.info('Load config from {}'.format(filename))
     return config

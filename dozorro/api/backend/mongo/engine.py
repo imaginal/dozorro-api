@@ -1,6 +1,6 @@
 import logging
 import struct
-from time import time
+from datetime import datetime
 from motor import motor_asyncio
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError, OperationFailure
@@ -65,10 +65,14 @@ class MongoEngine(object):
     def pack_offset(self, offset):
         if not offset:
             return offset
+        offset = offset.timestamp()
         return struct.pack('d', offset).hex()
 
     def unpack_offset(self, offset):
-        return struct.unpack('d', bytes.fromhex(offset))[0]
+        if not offset or len(offset) != 16:
+            return None
+        offset = struct.unpack('d', bytes.fromhex(offset))[0]
+        return datetime.fromtimestamp(offset)
 
     async def get_list(self, offset=None, limit=100, reverse=False, table='data'):
         if offset:
@@ -126,7 +130,7 @@ class MongoEngine(object):
     async def put_item(self, data, table='data'):
         if self.son.need_transform(data, self.db[table]):
             self.son.transform_incoming(data, self.db[table])
-        data['ts'] = time()
+        data['ts'] = datetime.utcnow()
         if '_id' not in data:
             data['_id'] = data.pop('id')
         try:

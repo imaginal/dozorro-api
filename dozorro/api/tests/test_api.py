@@ -317,6 +317,20 @@ async def test_api(test_client, loop):
     data = await resp.json()
     assert len(data['data']) != 0
 
+    url = PREFIX + '/data?limit=3'
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert len(data['data']) == 3
+
+    next_page_offset = data['next_page']['offset']
+
+    url = PREFIX + '/data?limit=3&offset=%s' % next_page_offset
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert len(data['data']) == 2
+
     url = PREFIX + '/data/' + root_key['id']
     resp = await client.get(url)
     assert resp.status == 200

@@ -1,4 +1,12 @@
 database:
+  engine: mongo
+  host: localhost
+  name: dozorro
+  username: mongoadmin
+  password: secret
+
+database_rethink:
+  engine: rethink
   host: localhost
   name: api_devel
   read_mode: outdated

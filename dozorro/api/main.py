@@ -14,13 +14,14 @@ async def cleanup(app):
         await app['archive'].close()
 
 
-async def init_app(loop, config):
-    middlewares = [
-        backend.database_middleware,
-        middleware.error_middleware
-    ]
+async def init_app(loop, config_file):
+    config = utils.load_config(config_file)
+    backend_middleware = backend.get_middleware(config)
+    middlewares = [middleware.error_middleware]
+    if backend_middleware:
+        middlewares.append(backend_middleware)
     app = web.Application(loop=loop, middlewares=middlewares)
-    app['config'] = utils.load_config(config)
+    app['config'] = config
     await backend.init_engine(app)
     app.on_cleanup.append(cleanup)
     if not app['config'].get('readonly'):

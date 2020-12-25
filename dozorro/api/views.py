@@ -80,7 +80,7 @@ class ItemView(View):
             return json_response(resp, dumps=dumps)
 
         await app['db'].put_item(data)
-        url = app.router['item_view'].url_for(item_id=data['id'])
+        url = app.router['item_view'].url_for(item_id=item_id)
         headers = [('Location', url.path)]
         resp = {'created': 1}
         return json_response(resp, status=201, headers=headers, dumps=dumps)

@@ -12,7 +12,6 @@ from dozorro.api.validate import dumps, hash_id
 from dozorro.api.utils import load_schemas
 
 
-CONFIG = "tests/api.yaml"
 ROOTJS = "tests/keyring/root.json"
 SECKEY = "tests/keypair.pem"
 COMMENT_SCHEMA = "tests/comment_schema.json"
@@ -57,13 +56,13 @@ async def find_tender_contract(app):
     assert False, "Contract not found"
 
 
-def test_create_cdb():
+def create_cdb(config):
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    testargs = ["cdb_init", "--dropdb", "--config", CONFIG, ROOTJS]
+    testargs = ["cdb_init", "--dropdb", "--config", config, ROOTJS]
     with patch.object(sys, 'argv', testargs):
         cdb_init()
 
@@ -78,8 +77,8 @@ def test_hash_id():
     assert hash_id(dump_bson(data)) == data['id']
 
 
-async def test_api(test_client, loop):
-    app = await init_app(loop, CONFIG)
+async def api_tests(test_client, loop, config):
+    app = await init_app(loop, config)
     client = await test_client(app)
 
     # send comment schema (outdated)
@@ -360,3 +359,27 @@ async def test_api(test_client, loop):
     assert len(data['data']) == 2
 
     await cleanup(app)
+
+
+def test_create_rethink():
+    create_cdb("tests/api_rethink.yaml")
+
+
+async def test_api_rethink(test_client, loop):
+    await api_tests(test_client, loop, "tests/api_rethink.yaml")
+
+
+def test_create_mongo():
+    create_cdb("tests/api_mongo.yaml")
+
+
+async def test_api_mongo(test_client, loop):
+    await api_tests(test_client, loop, "tests/api_mongo.yaml")
+
+
+def test_create_couch():
+    create_cdb("tests/api_couch.yaml")
+
+
+async def test_api_couch(test_client, loop):
+    await api_tests(test_client, loop, "tests/api_couch.yaml")

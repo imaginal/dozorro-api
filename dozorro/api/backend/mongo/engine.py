@@ -1,6 +1,6 @@
 import logging
-import struct
-from datetime import datetime
+from time import time
+from struct import pack, unpack
 from motor import motor_asyncio
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError, OperationFailure
@@ -65,14 +65,12 @@ class MongoEngine(object):
     def pack_offset(self, offset):
         if not offset:
             return offset
-        offset = offset.timestamp()
-        return struct.pack('d', offset).hex()
+        return pack('d', offset).hex()
 
     def unpack_offset(self, offset):
         if not offset or len(offset) != 16:
             return None
-        offset = struct.unpack('d', bytes.fromhex(offset))[0]
-        return datetime.fromtimestamp(offset)
+        return unpack('d', bytes.fromhex(offset))[0]
 
     async def get_list(self, offset=None, limit=100, reverse=False, table='data'):
         if offset:
@@ -106,7 +104,7 @@ class MongoEngine(object):
 
     async def get_many(self, items_list, table='data', limit=100):
         if len(items_list) > limit:
-            raise ValueError('list too big')
+            raise ValueError('items_list is too big')
         if len(items_list) == 1:
             doc = await self.get_item(items_list[0], table=table)
             return [doc] if doc else []
@@ -130,16 +128,16 @@ class MongoEngine(object):
     async def put_item(self, data, table='data'):
         if self.son.need_transform(data, self.db[table]):
             self.son.transform_incoming(data, self.db[table])
-        data['ts'] = datetime.utcnow()
+        data['ts'] = time()
         if '_id' not in data:
             data['_id'] = data.pop('id')
         try:
             await self.db[table].insert_one(data)
         except DuplicateKeyError as e:
-            logger.error('DuplicateKeyError {} for {}'.format(e, data.get('_id')))
+            logger.error('DuplicateKeyError {} for {}'.format(e, data['_id']))
             raise ValueError('{} already exists'.format(data['_id']))
         except OperationFailure as e:
-            logger.error('{} {} for {}'.format(e.__class__.__name__, e, data.get('_id')))
+            logger.error('{} {} for {}'.format(e.__class__.__name__, e, data['_id']))
             raise RuntimeError('insert error') from e
         return True
 

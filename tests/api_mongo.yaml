@@ -1,0 +1,18 @@
+database:
+  engine: mongo
+  host: localhost
+  name: dozorro
+  username: root
+  password: mongo
+
+tenders:
+  url: https://public.api.openprocurement.org/api/2.5/tenders
+
+archive:
+  url: https://public-api-sandbox.prozorro.gov.ua/api/0/tenders
+
+keyring: tests/keyring
+schemas: tests/schemas
+
+logging: tests/log.yaml
+

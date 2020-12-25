@@ -1,16 +1,9 @@
 database:
-  engine: mongo
-  host: localhost
-  name: dozorro
-  username: mongoadmin
-  password: secret
-
-database_rethink:
-  engine: rethink
-  host: localhost
+  engine: couch
+  server: http://127.0.0.1:5984
   name: api_devel
-  read_mode: outdated
-  keep_alive: true
+  user: root
+  password: couch
 
 tenders:
   url: https://public.api.openprocurement.org/api/2.5/tenders

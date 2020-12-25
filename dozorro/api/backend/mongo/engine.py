@@ -1,7 +1,7 @@
 import logging
 import struct
-from datetime import datetime
-import motor.motor_asyncio
+from time import time
+from motor import motor_asyncio
 from pymongo import ASCENDING, DESCENDING
 from pymongo.errors import DuplicateKeyError, OperationFailure
 from pymongo.son_manipulator import SONManipulator
@@ -51,7 +51,7 @@ class MongoEngine(object):
         self.options = dict(app['config']['database'])
         assert self.options.pop('engine', 'mongo') == 'mongo'
         self.db_name = self.options.pop('name', 'dozorro')
-        self.client = motor.motor_asyncio.AsyncIOMotorClient(**self.options)
+        self.client = motor_asyncio.AsyncIOMotorClient(**self.options)
         self.db = self.client[self.db_name]
         self.son = RefTransform()
         app['db'] = self
@@ -65,11 +65,10 @@ class MongoEngine(object):
     def pack_offset(self, offset):
         if not offset:
             return offset
-        return struct.pack('d', offset.timestamp()).hex()
+        return struct.pack('d', offset).hex()
 
     def unpack_offset(self, offset):
-        offset = struct.unpack('d', bytes.fromhex(offset))[0]
-        return datetime.fromtimestamp(offset)
+        return struct.unpack('d', bytes.fromhex(offset))[0]
 
     async def get_list(self, offset=None, limit=100, reverse=False, table='data'):
         if offset:
@@ -127,7 +126,7 @@ class MongoEngine(object):
     async def put_item(self, data, table='data'):
         if self.son.need_transform(data, self.db[table]):
             self.son.transform_incoming(data, self.db[table])
-        data['ts'] = datetime.utcnow()
+        data['ts'] = time()
         if '_id' not in data:
             data['_id'] = data.pop('id')
         try:

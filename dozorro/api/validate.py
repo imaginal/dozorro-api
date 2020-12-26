@@ -25,14 +25,15 @@ def hash_id(bdata):
     return h2[:32]
 
 
-def validate_envelope(data, keyring):
+def validate_envelope(data, keyring, check_date=True):
     if len(data) > 3 or len(data['envelope']) > 4:
         raise ValidateError('bad data structure')
     try:
         now = TZ.localize(datetime.now())
         env_date = iso8601.parse_date(data['envelope']['date'])
-        assert env_date > now - timedelta(days=3)
-        assert env_date < now + timedelta(days=1)
+        if check_date:
+            assert env_date > now - timedelta(days=3)
+            assert env_date < now + timedelta(days=1)
     except Exception as e:
         raise ValidateError('bad envelope date') from e
 
@@ -52,7 +53,7 @@ def validate_envelope(data, keyring):
         if owner not in keyring:
             raise KeyError('key not found')
         for keydata in keyring[owner]:
-            if keydata['validSince'] < env_date < keydata['validTill']:
+            if keydata['validSince'] <= env_date <= keydata['validTill']:
                 vkey_hex = keydata['publicKey']
                 vk = ed25519.VerifyingKey(vkey_hex, encoding='hex')
                 try:
@@ -81,7 +82,7 @@ async def validate_tender_reference(tender_id, app):
                     client = app['archive']
                     continue
                 raise ValidateError('tender not found')
-            await asyncio.sleep(n + 1)
+            await asyncio.sleep(n + 1)  # pragma: no cover
     if tender.get('mode', '') == 'test':
         if not app['config']['tenders'].get('test'):
             raise ValidateError('reference tender in mode=test')
@@ -105,7 +106,7 @@ async def validate_references(payload, formschema, app):
                 await app['db'].check_exists(payload[key], model=value['reference'])
 
 
-async def validate_schema(envelope, app):
+async def validate_schema(envelope, app, check_refs=True):
     model, schema = envelope['model'].split('/', 1)
     payload = envelope['payload']
     if model not in ('form', 'admin'):
@@ -117,4 +118,5 @@ async def validate_schema(envelope, app):
         raise ValidateError('unknown schema name "{}"'.format(schema))
     formschema = app['schemas'][schema]
     jsonschema.validate(payload, formschema)
-    await validate_references(payload, formschema, app)
+    if check_refs:
+        await validate_references(payload, formschema, app)

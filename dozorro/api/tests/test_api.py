@@ -6,10 +6,12 @@ import pytz
 import asyncio
 import ed25519
 import pytest
+from aiohttp import web
+from random import randint
 from datetime import datetime
 from unittest.mock import patch
-from aiohttp.client_exceptions import ClientConnectorError
-from dozorro.api.main import cdb_init, cdb_put, init_app, cleanup
+from dozorro.api.main import init_app, cleanup
+from dozorro.api.console import cdb_init, cdb_put, cdb_verify
 from dozorro.api.validate import dumps, hash_id
 from dozorro.api.utils import load_schemas
 
@@ -68,15 +70,54 @@ async def find_tender_contract(app):
     assert False, "Contract not found"
 
 
-def create_cdb(loop, config):
+def create_cdb(config):
     testargs = ["cdb_init", "--dropdb", "--config", config, ROOTJS]
     with patch.object(sys, 'argv', testargs):
         cdb_init()
 
-    testargs = ["cdb_put", COMMENT_SCHEMA]
+
+async def put_data(loop, config):
+    app = await init_app(config)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = randint(48400, 58400)
+    site = web.TCPSite(runner, 'localhost', port)
+    await site.start()
+
+    import nest_asyncio
+    nest_asyncio.apply()
+
+    testargs = ["cdb_put", COMMENT_SCHEMA, "localhost:%d" % port]
     with patch.object(sys, 'argv', testargs):
-        with pytest.raises(ClientConnectorError):
-            cdb_put()
+        cdb_put()
+
+    await site.stop()
+    await cleanup(app)
+
+
+def verify_database(loop, config):
+    testargs = ["cdb_verify", "--config", config]
+    with patch.object(sys, 'argv', testargs):
+        cdb_verify()
+
+
+async def verify_api_data(loop, config):
+    app = await init_app(config)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = randint(48400, 58400)
+    site = web.TCPSite(runner, 'localhost', port)
+    await site.start()
+
+    import nest_asyncio
+    nest_asyncio.apply()
+
+    testargs = ["cdb_verify", "localhost:%d" % port]
+    with patch.object(sys, 'argv', testargs):
+        cdb_verify()
+
+    await site.stop()
+    await cleanup(app)
 
 
 async def api_tests(test_client, loop, config):
@@ -156,6 +197,27 @@ async def api_tests(test_client, loop, config):
     assert resp.status == 400
     text = await resp.text()
     assert 'must include owner' in text
+
+    # sign is ok but key owner is  broken
+    orig_owner = data['envelope']['owner']
+    data['envelope']['owner'] = 'test root'
+
+    bson = dump_bson(data)
+    data['id'] = hash_id(bson)
+    data_sign(data, sk)
+
+    url = PREFIX + '/data/' + data['id']
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'sign not verified' in text
+
+    # restore owner
+    data['envelope']['owner'] = orig_owner
+
+    bson = dump_bson(data)
+    data['id'] = hash_id(bson)
+    data_sign(data, sk)
 
     url = PREFIX + '/data/' + data['id']
     resp = await client.put(url, json=data, headers=ua)
@@ -447,37 +509,82 @@ async def test_unknown_backend(loop):
         await init_app("tests/api_unknown.yaml")
 
 
+# # # start test rethink # # #
+
+
 def test_create_rethink(loop):
-    create_cdb(loop, "tests/api_rethink.yaml")
+    create_cdb("tests/api_rethink.yaml")
+
+
+async def test_put_rethink(loop):
+    await put_data(loop, "tests/api_rethink.yaml")
 
 
 async def test_api_rethink(test_client, loop):
     await api_tests(test_client, loop, "tests/api_rethink.yaml")
 
 
+def test_wsgi_rethink(loop):
+    wsgi_import(loop, "tests/api_rethink.yaml")
+
+
+def test_verify_data_rethink(loop):
+    verify_database(loop, "tests/api_rethink.yaml")
+
+
+async def test_verify_api_rethink(loop):
+    await verify_api_data(loop, "tests/api_rethink.yaml")
+
+
+# # # start test mongo # # #
+
+
 def test_create_mongo(loop):
-    create_cdb(loop, "tests/api_mongo.yaml")
+    create_cdb("tests/api_mongo.yaml")
+
+
+async def test_put_mongo(loop):
+    await put_data(loop, "tests/api_mongo.yaml")
 
 
 async def test_api_mongo(test_client, loop):
     await api_tests(test_client, loop, "tests/api_mongo.yaml")
 
 
+def test_wsgi_mongo(loop):
+    wsgi_import(loop, "tests/api_mongo.yaml")
+
+
+def test_verify_data_mongo(loop):
+    verify_database(loop, "tests/api_mongo.yaml")
+
+
+async def test_verify_api_mongo(loop):
+    await verify_api_data(loop, "tests/api_mongo.yaml")
+
+
+# # # start test couch # # #
+
+
 def test_create_couch(loop):
-    create_cdb(loop, "tests/api_couch.yaml")
+    create_cdb("tests/api_couch.yaml")
+
+
+async def test_put_couch(loop):
+    await put_data(loop, "tests/api_couch.yaml")
 
 
 async def test_api_couch(test_client, loop):
     await api_tests(test_client, loop, "tests/api_couch.yaml")
 
 
-def test_wsgi_rethink(loop):
-    wsgi_import(loop, "tests/api_rethink.yaml")
-
-
-def test_wsgi_mongo(loop):
-    wsgi_import(loop, "tests/api_mongo.yaml")
-
-
 def test_wsgi_couch(loop):
     wsgi_import(loop, "tests/api_couch.yaml")
+
+
+def test_verify_data_couch(loop):
+    verify_database(loop, "tests/api_couch.yaml")
+
+
+async def test_verify_api_couch(loop):
+    await verify_api_data(loop, "tests/api_couch.yaml")

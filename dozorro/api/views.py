@@ -1,7 +1,7 @@
 import re
 from rapidjson import loads, dumps
 from aiohttp.web import HTTPNotFound, HTTPMethodNotAllowed, View, json_response
-from .validate import ValidateError, validate_envelope, validate_schema
+from dozorro.api.validate import ValidateError, validate_envelope, validate_schema
 
 HEX_LIST = re.compile(r'^[0-9a-f,]{32,3300}$')
 
@@ -15,8 +15,8 @@ class ListView(View):
 
     async def get(self):
         args = self.request.query
-        offset = args.get('offset', None)
-        limit = int(args.get('limit', None) or 100)
+        offset = args.get('offset', '') or None
+        limit = int(args.get('limit', 0) or 100)
         reverse = bool(args.get('reverse', 0))
         if limit < 1 or limit > 1000:
             raise ValueError('bad limit')
@@ -64,16 +64,17 @@ class ItemView(View):
 
         self.request.raw_body_data = await self.request.content.read()
         data = loads(self.request.raw_body_data)
-        app = self.request.app
-
-        validate_envelope(data, app['keyring'])
-        await validate_schema(data['envelope'], app)
 
         if item_id != data['id']:
             raise ValidateError('id in uri and data mismatch')
 
         if ua and ua.find(data['envelope']['owner']) < 0:
             raise ValidateError('User-Agent must include owner')
+
+        app = self.request.app
+
+        validate_envelope(data, app['keyring'])
+        await validate_schema(data['envelope'], app)
 
         if self.request.query.get('nosave', False):
             resp = {'validated': 1, 'created': 0}

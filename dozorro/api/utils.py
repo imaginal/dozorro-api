@@ -9,11 +9,6 @@ import rapidjson as json
 logger = logging.getLogger(__name__)
 
 
-class FakeApp(dict):
-    def __init__(self, loop):
-        self.loop = loop
-
-
 class Client(object):
     session = None
 

@@ -33,7 +33,7 @@ class CouchEngine(object):
 
     async def get_list(self, offset=None, limit=100, reverse=False, table='data'):
         params = {'limit': limit}
-        if offset is not None:
+        if offset:
             offset = self.unpack_offset(offset)
             params['startkey'] = offset
             params['limit'] += 1

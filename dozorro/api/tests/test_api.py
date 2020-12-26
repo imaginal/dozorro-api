@@ -99,11 +99,24 @@ async def api_tests(test_client, loop, config):
 
     # back to read-write app
     app['config'].pop('readonly')
+
     resp = await client.put(url, json=data, headers=ua)
     assert resp.status == 400
     text = await resp.text()
     assert 'bad envelope date' in text
 
+    resp = await client.put(url, data="data", headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'must be application/json' in text
+
+    data['envelope']['unknown'] = 'abc'
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'bad data structure' in text
+
+    data['envelope'].pop('unknown')
     data['envelope']['date'] = get_now().isoformat()
     resp = await client.put(url, json=data, headers=ua)
     assert resp.status == 400
@@ -112,6 +125,7 @@ async def api_tests(test_client, loop, config):
 
     bson = dump_bson(data)
     data['id'] = hash_id(bson)
+
     url = PREFIX + '/data/' + data['id']
     resp = await client.put(url, json=data, headers=ua)
     assert resp.status == 400
@@ -130,6 +144,20 @@ async def api_tests(test_client, loop, config):
 
     data_sign(data, sk)
 
+    url = PREFIX + '/data/' + "00000000000000000000000000000000"
+    resp = await client.put(url, json=data, headers=ua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'id in uri and data mismatch' in text
+
+    url = PREFIX + '/data/' + data['id']
+    badua = {'User-Agent': 'some bad ua'}
+    resp = await client.put(url, json=data, headers=badua)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'must include owner' in text
+
+    url = PREFIX + '/data/' + data['id']
     resp = await client.put(url, json=data, headers=ua)
     assert resp.status == 201
     text = await resp.text()
@@ -304,6 +332,12 @@ async def api_tests(test_client, loop, config):
     assert data['data'][3]['id'] == comment_sample['id']
     assert data['data'][4]['id'] == form113_sample['id']
 
+    url = PREFIX + '/data?limit=1000000'
+    resp = await client.get(url)
+    assert resp.status == 200
+    data = await resp.json()
+    assert len(data['data']) == 5
+
     next_page_offset = data['next_page']['offset']
 
     url = PREFIX + '/data?offset=' + next_page_offset
@@ -331,6 +365,28 @@ async def api_tests(test_client, loop, config):
     assert resp.status == 200
     data = await resp.json()
     assert len(data['data']) == 2
+
+    url = PREFIX + '/data/' + (root_key['id'] * 150)
+    resp = await client.get(url)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'bad id length' in text
+
+    url = PREFIX + '/data/' + 'welcome'
+    resp = await client.get(url)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'bad id chars' in text
+
+    url = PREFIX + '/data/' + ('abc,' * 150)
+    resp = await client.get(url)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'too many ids' in text
+
+    url = PREFIX + '/data/' + '00000000000000000000000000000000,00000000000000000000000000000000'
+    resp = await client.get(url)
+    assert resp.status == 404
 
     url = PREFIX + '/data/' + root_key['id']
     resp = await client.get(url)
@@ -371,6 +427,18 @@ def wsgi_import(loop, config):
 
 
 # # # start test matrix # # #
+
+
+async def test_init_no_config(loop):
+    if "API_CONFIG" in os.environ:
+        os.environ["API_CONFIG"] = None
+    with pytest.raises(ValueError):
+        await init_app()
+
+
+async def test_unknown_backend(loop):
+    with pytest.raises(ValueError):
+        await init_app("tests/api_unknown.yaml")
 
 
 def test_create_rethink(loop):

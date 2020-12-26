@@ -57,7 +57,7 @@ class RethinkEngine(object):
 
     def unpack_offset(self, offset):
         if not offset or len(offset) != 16:
-            return None
+            raise ValueError('bad offset')
         return unpack('d', bytes.fromhex(offset))[0]
 
     async def get_list(self, offset=None, limit=100, reverse=False, table='data'):
@@ -125,14 +125,14 @@ class RethinkEngine(object):
             logger.error('{} status {}'.format(first_error, status))
             if first_error.startswith('Duplicate primary key'):
                 raise ValueError('{} already exists'.format(data['id']))
-            raise RuntimeError('insert error')
+            raise RuntimeError('insert error')  # pragma: no cover
         return True
 
     async def init_tables(self, drop_database=False):
         if drop_database:
             try:
                 await r.db_drop(self.options['db']).run(self.conn)
-            except ReqlOpFailedError:
+            except ReqlOpFailedError:   # pragma: no cover
                 pass
         await r.db_create(self.options['db']).run(self.conn)
         await r.table_create('data').run(self.conn)

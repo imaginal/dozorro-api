@@ -66,7 +66,7 @@ class MongoEngine(object):
 
     def unpack_offset(self, offset):
         if not offset or len(offset) != 16:
-            return None
+            raise ValueError('bad offset')
         return unpack('d', bytes.fromhex(offset))[0]
 
     async def get_list(self, offset=None, limit=100, reverse=False, table='data'):

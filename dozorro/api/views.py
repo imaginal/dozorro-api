@@ -19,7 +19,7 @@ class ListView(View):
         limit = int(args.get('limit', None) or 100)
         reverse = bool(args.get('reverse', 0))
         if limit < 1 or limit > 1000:
-            limit = 100
+            raise ValueError('bad limit')
         db = self.request.app['db']
         items_list, first, last = await db.get_list(
             offset, limit, reverse)

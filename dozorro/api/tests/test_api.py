@@ -334,9 +334,15 @@ async def api_tests(test_client, loop, config):
 
     url = PREFIX + '/data?limit=1000000'
     resp = await client.get(url)
-    assert resp.status == 200
-    data = await resp.json()
-    assert len(data['data']) == 5
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'bad limit' in text
+
+    url = PREFIX + '/data?offset=' + 'zzz'
+    resp = await client.get(url)
+    assert resp.status == 400
+    text = await resp.text()
+    assert 'bad offset' in text
 
     next_page_offset = data['next_page']['offset']
 

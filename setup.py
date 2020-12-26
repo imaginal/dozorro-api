@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = "0.5b1"
+version = "0.5b2"
 
 requires = [
     "aiohttp",
@@ -17,8 +17,9 @@ requires = [
 
 entry_points = {
     'console_scripts': [
-        'cdb_init=dozorro.api.main:cdb_init',
-        'cdb_put=dozorro.api.main:cdb_put'
+        'cdb_init=dozorro.api.console:cdb_init',
+        'cdb_put=dozorro.api.console:cdb_put',
+        'cdb_verify=dozorro.api.console:cdb_verify',
     ]
 }
 

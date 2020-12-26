@@ -1,8 +1,9 @@
 import asyncio
 import logging
-import struct
+from time import time
 from rethinkdb import r
 from rethinkdb.errors import ReqlDriverError, ReqlOpFailedError
+from struct import pack, unpack
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +51,14 @@ class RethinkEngine(object):
                 logger.exception('RethinkEngine.KeepAlive')
 
     def pack_offset(self, offset):
-        if not offset:
+        if offset is None:
             return offset
-        return struct.pack('d', offset.timestamp()).hex()
+        return pack('d', offset).hex()
 
     def unpack_offset(self, offset):
-        offset = struct.unpack('d', bytes.fromhex(offset))[0]
-        return r.epoch_time(offset)
+        if not offset or len(offset) != 16:
+            return None
+        return unpack('d', bytes.fromhex(offset))[0]
 
     async def get_list(self, offset=None, limit=100, reverse=False, table='data'):
         minval, maxval, oindex = r.minval, r.maxval, 'ts'
@@ -116,7 +118,7 @@ class RethinkEngine(object):
         return True
 
     async def put_item(self, data, table='data'):
-        data['ts'] = r.now()
+        data['ts'] = time()
         status = await r.table(table).insert(data).run(self.conn)
         if status['errors']:
             first_error = status.get('first_error', 'insert error')

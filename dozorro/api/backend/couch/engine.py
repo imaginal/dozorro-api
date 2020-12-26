@@ -22,7 +22,7 @@ class CouchEngine(object):
         await self.couch.close()
 
     def pack_offset(self, offset):
-        if not offset:
+        if offset is None:
             return offset
         return pack('d', offset).hex()
 

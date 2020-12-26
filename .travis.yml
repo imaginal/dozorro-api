@@ -1,0 +1,39 @@
+dist: focal
+language: python
+sudo: required
+services:
+  - mongodb
+addons:
+  rethinkdb: '2.4'
+env:
+  global:
+    - TZ=Europe/Kiev
+before_install:
+  - sudo /etc/init.d/rethinkdb restart
+  - sudo mongo admin --eval 'db.createUser({user:"test",pwd:"test",roles:["dbAdminAnyDatabase","readWriteAnyDatabase"]});'
+  - sudo mkdir -p /opt/couchdb/etc/local.d
+  - /bin/echo -e "[admins]\nadmin=admin" | sudo tee /opt/couchdb/etc/local.d/admins.ini
+  - wget https://apache.bintray.com/couchdb-deb/pool/C/CouchDB/couchdb_3.1.1~focal_amd64.deb
+  - sudo apt install -yq libmozjs-68-0
+  - sudo dpkg -i couchdb_3.1.1~focal_amd64.deb
+  - sudo /etc/init.d/couchdb restart
+  - sleep 3
+  - sudo netstat -ltpn
+  - curl -s -X PUT http://admin:admin@127.0.0.1:5984/_users
+  - curl -s -X PUT http://admin:admin@127.0.0.1:5984/_replicator
+  - curl -s -X PUT http://admin:admin@127.0.0.1:5984/_node/_local/_config/admins/test -d '"test"'
+install:
+  - pip install -U pip wheel
+  - pip install -r requirements.txt
+  - pip install -r requirements-test.txt
+  - python setup.py install
+  - cdb_init --config tests/api_rethink.yaml tests/keyring/root.json
+  - cdb_init --config tests/api_mongo.yaml tests/keyring/root.json
+  - cdb_init --config tests/api_couch.yaml tests/keyring/root.json
+script:
+  - pytest
+after_success:
+  - coveralls
+notifications:
+  email:
+    - flyonts@gmail.com

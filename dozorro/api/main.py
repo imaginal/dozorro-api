@@ -1,3 +1,4 @@
+import os
 import argparse
 import rapidjson as json
 from asyncio import get_event_loop
@@ -14,17 +15,23 @@ async def cleanup(app):
         await app['archive'].close()
 
 
-async def init_app(loop, config_file):
-    config = utils.load_config(config_file)
+async def init_app(config=None):
+    if not config:
+        config = os.getenv('API_CONFIG')
+    if not config:
+        raise ValueError('API_CONFIG not set')
+    if isinstance(config, str):
+        config = utils.load_config(config)
     backend_middleware = backend.get_middleware(config)
     middlewares = [middleware.error_middleware]
     if backend_middleware:
         middlewares.append(backend_middleware)
-    app = web.Application(loop=loop, middlewares=middlewares)
+    app = web.Application(middlewares=middlewares)
     app['config'] = config
     await backend.init_engine(app)
     app.on_cleanup.append(cleanup)
     if not app['config'].get('readonly'):
+        loop = get_event_loop()
         await utils.create_client(app, loop)
         await utils.load_keyring(app)
         await utils.load_schemas(app)
@@ -41,6 +48,7 @@ async def init_tables(loop, config, root_key, dropdb=False):
     await backend.init_engine(app)
     await app['db'].init_tables(dropdb)
     await app['db'].put_item(key)
+    await cleanup(app)
 
 
 async def put_data(signed_json, api_url):
@@ -85,7 +93,7 @@ def cdb_put():
     loop.run_until_complete(put_data(args.signed_json, args.api_url))
 
 
-def main():
+def main():                                 # pragma: no cover
     parser = argparse.ArgumentParser()
     parser.add_argument('--config')
     parser.add_argument('--sock')
@@ -94,9 +102,9 @@ def main():
     args = parser.parse_args()
 
     loop = get_event_loop()
-    app = loop.run_until_complete(init_app(loop, args.config))
+    app = loop.run_until_complete(init_app(args.config))
     web.run_app(app, path=args.sock, host=args.host, port=args.port)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':                  # pragma: no cover
     main()

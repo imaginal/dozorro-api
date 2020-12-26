@@ -59,9 +59,6 @@ class MongoEngine(object):
     async def close(self):
         self.client.close()
 
-    async def check_open(self):
-        await self.db.list_collection_names()
-
     def pack_offset(self, offset):
         if not offset:
             return offset
@@ -97,7 +94,7 @@ class MongoEngine(object):
         doc = await self.db[table].find_one({'_id': item_id})
         if doc:
             if self.son.need_transform(doc, self.db[table]):
-                self.son.transform_incoming(doc, self.db[table])
+                self.son.transform_outgoing(doc, self.db[table])
             doc['id'] = doc.pop('_id')
             doc.pop('ts')
         return doc
@@ -116,7 +113,7 @@ class MongoEngine(object):
             doc['id'] = doc.pop('_id')
             doc.pop('ts')
             if self.son.need_transform(doc, collection):
-                self.son.transform_incoming(doc, collection)
+                self.son.transform_outgoing(doc, collection)
             items_list.append(doc)
         return items_list
 
@@ -136,7 +133,7 @@ class MongoEngine(object):
         except DuplicateKeyError as e:
             logger.error('DuplicateKeyError {} for {}'.format(e, data['_id']))
             raise ValueError('{} already exists'.format(data['_id']))
-        except OperationFailure as e:
+        except OperationFailure as e:   # pragma: no cover
             logger.error('{} {} for {}'.format(e.__class__.__name__, e, data['_id']))
             raise RuntimeError('insert error') from e
         return True

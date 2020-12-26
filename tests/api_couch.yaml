@@ -1,9 +1,9 @@
 database:
   engine: couch
   server: http://127.0.0.1:5984
-  name: api_devel
-  user: root
-  password: couch
+  name: api_test
+  user: test
+  password: test
 
 tenders:
   url: https://public.api.openprocurement.org/api/2.5/tenders

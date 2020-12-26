@@ -1,7 +1,7 @@
 database:
   engine: rethink
   host: localhost
-  name: api_devel
+  name: api_test
   read_mode: outdated
   keep_alive: true
 

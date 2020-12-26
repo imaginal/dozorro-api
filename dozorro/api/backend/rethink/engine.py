@@ -2,7 +2,7 @@ import asyncio
 import logging
 import struct
 from rethinkdb import r
-import rethinkdb.errors
+from rethinkdb.errors import ReqlDriverError, ReqlOpFailedError
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,9 @@ class RethinkEngine(object):
         self.conn = await r.connect(**self.options)
         self.keep_alive_task = None
         if keep_alive:
-            coro = self.keep_alive(app)
-            self.keep_alive_task = app.loop.create_task(coro)
+            loop = asyncio.get_event_loop()
+            coro = self.keep_alive(loop)
+            self.keep_alive_task = loop.create_task(coro)
         app['db'] = self
 
     async def close(self):
@@ -34,18 +35,18 @@ class RethinkEngine(object):
     async def check_open(self):
         try:
             self.conn.check_open()
-        except (AttributeError, rethinkdb.errors.ReqlDriverError) as e:
+        except (AttributeError, ReqlDriverError) as e:  # pragma: no cover
             logger.error('Connection error: {}'.format(e))
             self.conn = await r.connect(**self.options)
 
-    async def keep_alive(self, app):
-        while app.loop.is_running():
+    async def keep_alive(self, loop):
+        while loop.is_running():
             try:
                 await asyncio.sleep(1)
                 await self.check_open()
             except asyncio.CancelledError:
                 break
-            except Exception:
+            except Exception:   # pragma: no cover
                 logger.exception('RethinkEngine.KeepAlive')
 
     def pack_offset(self, offset):
@@ -79,8 +80,6 @@ class RethinkEngine(object):
         # for doc in cursor:
         while await cursor.fetch_next():
             doc = await cursor.next()
-            if not doc:
-                break
             last_ts = doc.pop('ts')
             if not first_ts:
                 first_ts = last_ts
@@ -105,8 +104,6 @@ class RethinkEngine(object):
         docs = list()
         while await cursor.fetch_next():
             doc = await cursor.next()
-            if not doc:
-                break
             doc.pop('ts')
             docs.append(doc)
         return docs
@@ -133,7 +130,7 @@ class RethinkEngine(object):
         if drop_database:
             try:
                 await r.db_drop(self.options['db']).run(self.conn)
-            except rethinkdb.errors.ReqlOpFailedError:
+            except ReqlOpFailedError:
                 pass
         await r.db_create(self.options['db']).run(self.conn)
         await r.table_create('data').run(self.conn)

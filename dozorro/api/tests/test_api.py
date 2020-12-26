@@ -5,9 +5,11 @@ import json
 import pytz
 import asyncio
 import ed25519
+import pytest
 from datetime import datetime
 from unittest.mock import patch
-from dozorro.api.main import cdb_init, init_app, cleanup
+from aiohttp.client_exceptions import ClientConnectorError
+from dozorro.api.main import cdb_init, cdb_put, init_app, cleanup
 from dozorro.api.validate import dumps, hash_id
 from dozorro.api.utils import load_schemas
 
@@ -21,6 +23,16 @@ FORM113_SAMPLE = "tests/form113_sample.json"
 TMPDIR = "tests/temp"
 PREFIX = "/api/v1"
 TZ = pytz.timezone('Europe/Kiev')
+
+
+def test_hash_id():
+    data = {"envelope": {}, "id": "c74f3008fdd2f7c5ae5446ab2e522629"}
+    assert hash_id(dump_bson(data)) == data['id']
+    data = {"envelope": {"owner": "example-owner"}, "id": "f78e26a9166e7812987f9aec721ba2a2"}
+    assert hash_id(dump_bson(data)) == data['id']
+    data = {"envelope": {"date": "2017-04-20T01:55:21.358240+03:00", "owner": "example-owner",
+            "payload": "тест"}, "id": "061002ffb700a3d7cad59da4457c3af0"}
+    assert hash_id(dump_bson(data)) == data['id']
 
 
 def get_now():
@@ -56,29 +68,19 @@ async def find_tender_contract(app):
     assert False, "Contract not found"
 
 
-def create_cdb(config):
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+def create_cdb(loop, config):
     testargs = ["cdb_init", "--dropdb", "--config", config, ROOTJS]
     with patch.object(sys, 'argv', testargs):
         cdb_init()
 
-
-def test_hash_id():
-    data = {"envelope": {}, "id": "c74f3008fdd2f7c5ae5446ab2e522629"}
-    assert hash_id(dump_bson(data)) == data['id']
-    data = {"envelope": {"owner": "example-owner"}, "id": "f78e26a9166e7812987f9aec721ba2a2"}
-    assert hash_id(dump_bson(data)) == data['id']
-    data = {"envelope": {"date": "2017-04-20T01:55:21.358240+03:00", "owner": "example-owner",
-            "payload": "тест"}, "id": "061002ffb700a3d7cad59da4457c3af0"}
-    assert hash_id(dump_bson(data)) == data['id']
+    testargs = ["cdb_put", COMMENT_SCHEMA]
+    with patch.object(sys, 'argv', testargs):
+        with pytest.raises(ClientConnectorError):
+            cdb_put()
 
 
 async def api_tests(test_client, loop, config):
-    app = await init_app(loop, config)
+    app = await init_app(config)
     client = await test_client(app)
 
     # send comment schema (outdated)
@@ -361,25 +363,47 @@ async def api_tests(test_client, loop, config):
     await cleanup(app)
 
 
-def test_create_rethink():
-    create_cdb("tests/api_rethink.yaml")
+def wsgi_import(loop, config):
+    os.environ["API_CONFIG"] = config
+    from dozorro.api.wsgi import app
+    assert 'config' in app
+    loop.run_until_complete(cleanup(app))
+
+
+# # # start test matrix # # #
+
+
+def test_create_rethink(loop):
+    create_cdb(loop, "tests/api_rethink.yaml")
 
 
 async def test_api_rethink(test_client, loop):
     await api_tests(test_client, loop, "tests/api_rethink.yaml")
 
 
-def test_create_mongo():
-    create_cdb("tests/api_mongo.yaml")
+def test_create_mongo(loop):
+    create_cdb(loop, "tests/api_mongo.yaml")
 
 
 async def test_api_mongo(test_client, loop):
     await api_tests(test_client, loop, "tests/api_mongo.yaml")
 
 
-def test_create_couch():
-    create_cdb("tests/api_couch.yaml")
+def test_create_couch(loop):
+    create_cdb(loop, "tests/api_couch.yaml")
 
 
 async def test_api_couch(test_client, loop):
     await api_tests(test_client, loop, "tests/api_couch.yaml")
+
+
+def test_wsgi_rethink(loop):
+    wsgi_import(loop, "tests/api_rethink.yaml")
+
+
+def test_wsgi_mongo(loop):
+    wsgi_import(loop, "tests/api_mongo.yaml")
+
+
+def test_wsgi_couch(loop):
+    wsgi_import(loop, "tests/api_couch.yaml")

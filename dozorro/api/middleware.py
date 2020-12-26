@@ -37,12 +37,12 @@ async def error_middleware(app, handler):
                 method, path = request.method, request.raw_path
                 logger.error('HTTPException {} on {} {}'.format(e, method, path))
                 return json_error(e.status, e.reason)
-            raise
+            raise               # pragma: no cover
         except (AssertionError, LookupError, TypeError, ValueError, ValidationError) as e:
             request_dump = await dump_request(request)
             logger.exception('ValidateError on {}'.format(request_dump))
             return json_error(400, '{}: {}'.format(e.__class__.__name__, str(e)[:100]))
-        except Exception as e:
+        except Exception as e:  # pragma: no cover
             request_dump = await dump_request(request)
             logger.exception('Unhandled Exception on {}'.format(request_dump))
             return json_error(500, 'Unhandled error: {}'.format(str(e)[:50]))

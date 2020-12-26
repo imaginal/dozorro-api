@@ -21,9 +21,6 @@ class CouchEngine(object):
     async def close(self):
         await self.couch.close()
 
-    async def check_open(self):
-        pass
-
     def pack_offset(self, offset):
         if not offset:
             return offset

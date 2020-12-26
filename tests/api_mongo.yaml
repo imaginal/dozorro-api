@@ -1,9 +1,9 @@
 database:
   engine: mongo
   host: localhost
-  name: dozorro
-  username: root
-  password: mongo
+  name: api_test
+  username: test
+  password: test
 
 tenders:
   url: https://public.api.openprocurement.org/api/2.5/tenders

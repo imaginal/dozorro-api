@@ -31,10 +31,10 @@ class Client(object):
         if not cls.session:
             headers = {'User-Agent': 'dozorro.api/0.3.1'}
             base_timeout = int(config.get('timeout', 30))
+            timeout = aiohttp.ClientTimeout(base_timeout)
             cls.session = aiohttp.ClientSession(loop=loop,
                         headers=headers,
-                        conn_timeout=base_timeout,
-                        read_timeout=base_timeout,
+                        timeout=timeout,
                         raise_for_status=True)
             self.session = cls.session
         await self.init_session_cookie()

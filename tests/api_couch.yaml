@@ -1,7 +1,7 @@
 database:
   engine: couch
   server: http://127.0.0.1:5984
-  name: api_test
+  database: api_test
   user: test
   password: test
 

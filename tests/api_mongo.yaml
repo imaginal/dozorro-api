@@ -1,7 +1,7 @@
 database:
   engine: mongo
   host: localhost
-  name: api_test
+  database: api_test
   username: test
   password: test
 

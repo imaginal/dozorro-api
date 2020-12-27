@@ -50,7 +50,7 @@ class MongoEngine(object):
     async def init_engine(self, app):
         self.options = dict(app['config']['database'])
         assert self.options.pop('engine', 'mongo') == 'mongo'
-        self.db_name = self.options.pop('name', 'dozorro')
+        self.db_name = self.options.pop('database', 'dozorro')
         self.client = motor_asyncio.AsyncIOMotorClient(**self.options)
         self.db = self.client[self.db_name]
         self.son = RefTransform()

@@ -21,7 +21,7 @@ class CouchEngine(object):
     async def init_engine(self, app):
         self.options = dict(app['config']['database'])
         assert self.options.pop('engine', 'couch') == 'couch'
-        self.db_name = self.options.pop('name', 'dozorro')
+        self.db_name = self.options.pop('database', 'dozorro')
         self.couch = CouchDB(**self.options)
         with suppress(NotFoundError):
             self.db = await self.couch[self.db_name]

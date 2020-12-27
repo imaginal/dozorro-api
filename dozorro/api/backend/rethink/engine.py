@@ -13,7 +13,8 @@ class RethinkEngine(object):
         r.set_loop_type('asyncio')
         self.options = dict(app['config']['database'])
         assert self.options.pop('engine', 'rethink') == 'rethink'
-        self.options['db'] = self.options.pop('name', 'dozorro')
+        if 'db' not in self.options:
+            self.options['db'] = self.options.pop('database', 'dozorro')
         self.read_mode = self.options.pop('read_mode', 'single')
         keep_alive = self.options.pop('keep_alive', False)
         self.conn = await r.connect(**self.options)

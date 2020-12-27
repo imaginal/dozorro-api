@@ -11,7 +11,6 @@ requires = [
     "jsonschema",
     "python-rapidjson",
     "PyYAML",
-    "rethinkdb",
     "pytz"
 ]
 

@@ -11,6 +11,9 @@ iso8601==0.1.13
 jsonschema==3.2.0
 python-rapidjson==0.9.4
 PyYAML==5.3.1
+aiocouch==2.0.1
+pymongo==3.11.2
+motor==2.3.0
 rethinkdb==2.4.7
 six==1.15.0
 yarl==1.6.3

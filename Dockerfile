@@ -11,6 +11,11 @@ RUN apk add --no-cache python3 py3-pip py3-wheel \
  && echo $TZ >/etc/timezone \
  && pip3 install --no-index -f /dist dozorro.api gunicorn
 
+# Choose one:
+# RUN pip3 install --no-index -f /dist aiocouch
+# RUN pip3 install --no-index -f /dist pymongo motor
+# RUN pip3 install --no-index -f /dist rethinkdb
+
 RUN rm -rf /dist /var/cache/apk \
  && chmod -R 700 /bin /sbin /usr/bin /usr/sbin /usr/local/*bin \
  && chmod 711 /usr/bin && chmod 755 /usr/bin/python3 /usr/bin/gunicorn \

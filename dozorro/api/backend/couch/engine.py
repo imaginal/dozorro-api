@@ -8,6 +8,16 @@ logger = logging.getLogger(__name__)
 
 
 class CouchEngine(object):
+    VIEWS = {
+        'by_ts': {
+            'map': '''function (doc) {
+                if (doc.type == 'data') {
+                    emit(doc.ts, null)
+                }
+            }''',
+        }
+    }
+
     async def init_engine(self, app):
         self.options = dict(app['config']['database'])
         assert self.options.pop('engine', 'couch') == 'couch'
@@ -106,15 +116,10 @@ class CouchEngine(object):
         return True
 
     async def create_views(self):
-        map_func = '''function (doc) {
-            if (doc.type == 'data') {
-                data = {id: doc.id}
-                emit(doc.ts, data)
-            }
-        }'''
         db = await self.couch[self.db_name]
         ddoc = await db.design_doc('data')
-        await ddoc.create_view('by_ts', map_func)
+        for name, view in self.VIEWS.items():
+            await ddoc.create_view(name, view['map'])
 
     async def init_tables(self, drop_database=False):
         dbs_list = await self.couch.keys()

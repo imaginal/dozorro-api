@@ -8,14 +8,28 @@ logger = logging.getLogger(__name__)
 
 
 class CouchEngine(object):
-    VIEWS = {
-        'by_ts': {
-            'map': '''function (doc) {
-                if (doc.type == 'data') {
-                    emit(doc.ts, null)
-                }
-            }''',
-        }
+    DESIGN = {
+        "views": {
+            "by_ts": {
+                "map": """function (doc) {
+                    if (doc.type == 'data') {
+                        emit(doc.ts, null)
+                    }
+                }""",
+            }
+        },
+        "validate_doc_update": """function(newDoc, oldDoc, userCtx, secObj) {
+            if (newDoc._deleted === true) {
+                throw({forbidden: 'Deletion is strictly prohibited'})
+            }
+            if (oldDoc && oldDoc.type === 'data') {
+                throw({forbidden: 'Data changes is strictly prohibited'})
+            }
+            if (newDoc._id[0] === '_' && userCtx.roles.indexOf('_admin') === -1) {
+                throw({forbidden: 'Design documents requires admin role'})
+            }
+        }""",
+        "language": "javascript"
     }
 
     async def init_engine(self, app):
@@ -115,11 +129,10 @@ class CouchEngine(object):
             raise ValueError('{} already exists'.format(doc_id))
         return True
 
-    async def create_views(self):
+    async def update_design(self):
         db = await self.couch[self.db_name]
-        ddoc = await db.design_doc('data')
-        for name, view in self.VIEWS.items():
-            await ddoc.create_view(name, view['map'])
+        ddoc = await db.create("_design/data", exists_ok=True, data=self.DESIGN)
+        await ddoc.save()
 
     async def init_tables(self, drop_database=False):
         dbs_list = await self.couch.keys()
@@ -127,6 +140,6 @@ class CouchEngine(object):
             db = await self.couch[self.db_name]
             await db.delete()
         await self.couch.create(self.db_name)
-        await self.create_views()
+        await self.update_design()
         self.db = await self.couch[self.db_name]
         self.view = self.db.view('data', 'by_ts')

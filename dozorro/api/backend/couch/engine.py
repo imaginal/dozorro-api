@@ -90,9 +90,12 @@ class CouchEngine(object):
         doc.pop('ts')
 
     async def get_item(self, item_id, table='data'):
-        doc = await self.db.get(item_id)
-        data = doc.data.copy()
-        self.transform_outgoing(data)
+        try:
+            doc = await self.db.get(item_id)
+            data = doc.data
+            self.transform_outgoing(data)
+        except NotFoundError:
+            data = None
         return data
 
     async def get_many(self, items_list, table='data'):

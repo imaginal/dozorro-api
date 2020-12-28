@@ -452,9 +452,17 @@ async def api_tests(test_client, loop, config):
     text = await resp.text()
     assert 'too many ids' in text
 
+    url = PREFIX + '/data/' + '00000000000000000000000000000000'
+    resp = await client.get(url)
+    assert resp.status == 404
+    text = await resp.text()
+    assert 'Not Found' in text
+
     url = PREFIX + '/data/' + '00000000000000000000000000000000,00000000000000000000000000000000'
     resp = await client.get(url)
     assert resp.status == 404
+    text = await resp.text()
+    assert 'Not Found' in text
 
     url = PREFIX + '/data/' + root_key['id']
     resp = await client.get(url)

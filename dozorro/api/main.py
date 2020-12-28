@@ -5,7 +5,7 @@ from asyncio import get_event_loop
 from dozorro.api import backend, middleware, utils, views
 
 
-async def cleanup(app):
+async def shutdown_app(app):
     if 'db' in app:
         await app['db'].close()
     if 'tenders' in app:
@@ -28,7 +28,7 @@ async def init_app(config=None):
     app = web.Application(middlewares=middlewares)
     app['config'] = config
     await backend.init_engine(app)
-    app.on_cleanup.append(cleanup)
+    app.on_shutdown.append(shutdown_app)
     if not app['config'].get('readonly'):
         loop = get_event_loop()
         await utils.create_client(app, loop)

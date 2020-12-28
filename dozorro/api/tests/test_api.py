@@ -10,7 +10,7 @@ from aiohttp import web
 from random import randint
 from datetime import datetime
 from unittest.mock import patch
-from dozorro.api.main import init_app, cleanup
+from dozorro.api.main import init_app, shutdown_app
 from dozorro.api.console import cdb_init, cdb_put, cdb_verify
 from dozorro.api.validate import dumps, hash_id
 from dozorro.api.utils import load_schemas
@@ -92,7 +92,7 @@ async def put_data(loop, config):
         cdb_put()
 
     await site.stop()
-    await cleanup(app)
+    await shutdown_app(app)
 
 
 def verify_database(loop, config):
@@ -117,7 +117,7 @@ async def verify_api_data(loop, config):
         cdb_verify()
 
     await site.stop()
-    await cleanup(app)
+    await shutdown_app(app)
 
 
 async def api_tests(test_client, loop, config):
@@ -484,14 +484,14 @@ async def api_tests(test_client, loop, config):
     data = await resp.json()
     assert len(data['data']) == 2
 
-    await cleanup(app)
+    await shutdown_app(app)
 
 
 def wsgi_import(loop, config):
     os.environ["API_CONFIG"] = config
     from dozorro.api.wsgi import app
     assert 'config' in app
-    loop.run_until_complete(cleanup(app))
+    loop.run_until_complete(shutdown_app(app))
 
 
 # # # start test matrix # # #

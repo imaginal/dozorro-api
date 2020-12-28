@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = "0.5b3"
+version = "0.5b4"
 
 requires = [
     "aiohttp",
